@@ -61,6 +61,10 @@ public class NextMovieService
         BaseItem? next = null;
         string? collectionName = null;
 
+        // Other parts of the same series make poor "more like this" picks
+        // (nobody wants Part Three suggested right after Part One).
+        var exclude = new HashSet<Guid> { current.Id };
+
         try
         {
             foreach (var boxSet in FindCollections(user, current))
@@ -70,6 +74,11 @@ public class NextMovieService
                 if (index < 0)
                 {
                     continue;
+                }
+
+                foreach (var film in films)
+                {
+                    exclude.Add(film.Id);
                 }
 
                 next = films.Skip(index + 1).FirstOrDefault(m => !config.SkipWatchedInCollections || !IsPlayed(user, m));
@@ -86,7 +95,6 @@ public class NextMovieService
             _logger.LogWarning(ex, "Up Next: couldn't read collections for {Name}", current.Name);
         }
 
-        var exclude = new HashSet<Guid> { current.Id };
         if (next is not null)
         {
             exclude.Add(next.Id);
@@ -118,9 +126,35 @@ public class NextMovieService
 
         return _libraryManager.GetItemList(query)
             .OfType<BoxSet>()
-            .Where(b => (b.LinkedChildren ?? Array.Empty<LinkedChild>()).Any(c => c is not null && c.ItemId.HasValue && c.ItemId.Value.Equals(current.Id)))
+            .Where(b => (b.LinkedChildren ?? Array.Empty<LinkedChild>()).Any(c => Links(c, current)))
             // Prefer smaller collections: a trilogy beats a 40-film "Marvel" list.
             .OrderBy(b => b.LinkedChildren?.Length ?? 0);
+    }
+
+    // Collections store their members by item id, library id or file path,
+    // depending on how they were created; check all three.
+    private static bool Links(LinkedChild? child, BaseItem item)
+    {
+        if (child is null)
+        {
+            return false;
+        }
+
+        if (child.ItemId.HasValue && child.ItemId.Value.Equals(item.Id))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(child.LibraryItemId)
+            && Guid.TryParse(child.LibraryItemId, out var libraryId)
+            && libraryId.Equals(item.Id))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrEmpty(child.Path)
+            && !string.IsNullOrEmpty(item.Path)
+            && string.Equals(child.Path, item.Path, StringComparison.OrdinalIgnoreCase);
     }
 
     private static List<BaseItem> OrderedFilms(User user, BoxSet boxSet)
