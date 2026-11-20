@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1.0
+
+- Settings page no longer says Roku gets autoplay. The Jellyfin Roku app doesn't accept remote commands, so Roku isn't supported.
+
 ## 1.4.0.0
 
 - New: **Check a movie** on the Up Next settings page. Pick any movie or episode to see which series Up Next found, the play order, what plays next, and when the card appears and why.

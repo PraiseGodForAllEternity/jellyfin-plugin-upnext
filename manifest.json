@@ -8,6 +8,14 @@
         "category":  "General",
         "versions":  [
                          {
+                             "version":  "1.4.1.0",
+                             "changelog":  "Settings page no longer says Roku gets autoplay; Roku isn\u0027t supported because its app doesn\u0027t accept remote commands.",
+                             "targetAbi":  "10.11.0.0",
+                             "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.4.1.0/up-next_1.4.1.0.zip",
+                             "checksum":  "2218af9ab2d0eee4672ad4d93bc7881d",
+                             "timestamp":  "2026-11-20T23:41:17Z"
+                         },
+                         {
                              "version":  "1.4.0.0",
                              "changelog":  "New: Check a movie tool on the settings page. New: credits timing from chapter names when Intro Skipper hasn\u0027t detected credits.",
                              "targetAbi":  "10.11.0.0",
