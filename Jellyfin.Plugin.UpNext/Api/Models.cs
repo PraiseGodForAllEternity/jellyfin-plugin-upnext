@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using Jellyfin.Plugin.UpNext.Services;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.UpNext.Api;
@@ -40,6 +43,42 @@ public class MovieCard
     /// <summary>Gets or sets a value indicating whether the movie has a logo.</summary>
     public bool HasLogo { get; set; }
 
+    /// <summary>Gets or sets the item that actually plays (a show's first episode; the movie itself otherwise).</summary>
+    public Guid PlayId { get; set; }
+
+    /// <summary>Gets or sets "Movie" or "Series".</summary>
+    public string Kind { get; set; } = "Movie";
+
+    /// <summary>Gets or sets an extra line, e.g. "Season 1, Episode 1: Pilot".</summary>
+    public string? Subtitle { get; set; }
+
+    /// <summary>
+    /// Builds a card from a suggestion.
+    /// </summary>
+    /// <param name="suggestion">What to show and what to play.</param>
+    /// <returns>The card.</returns>
+    public static MovieCard From(Suggestion suggestion)
+    {
+        var card = From(suggestion.Display);
+        card.PlayId = suggestion.Play.Id;
+        if (suggestion.Display is Series)
+        {
+            card.Kind = "Series";
+            card.RunTimeTicks = null;
+            if (suggestion.Play is Episode episode)
+            {
+                card.Subtitle = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Season {0}, Episode {1}: {2}",
+                    episode.ParentIndexNumber ?? 1,
+                    episode.IndexNumber ?? 1,
+                    episode.Name);
+            }
+        }
+
+        return card;
+    }
+
     /// <summary>
     /// Builds a card from a library item.
     /// </summary>
@@ -50,6 +89,7 @@ public class MovieCard
         return new MovieCard
         {
             Id = item.Id,
+            PlayId = item.Id,
             Name = item.Name,
             Year = item.ProductionYear,
             Overview = item.Overview,
@@ -95,6 +135,12 @@ public class UpNextResponse
     /// <summary>Gets or sets the collection the next movie comes from.</summary>
     public string? CollectionName { get; set; }
 
+    /// <summary>Gets or sets why this was picked: Collection, Similar, SeriesFinale or CaughtUp.</summary>
+    public string? Context { get; set; }
+
+    /// <summary>Gets or sets the collection or show the pick relates to.</summary>
+    public string? SourceName { get; set; }
+
     /// <summary>Gets or sets the alternatives.</summary>
     public List<MovieCard> Suggestions { get; set; } = new();
 }
@@ -107,8 +153,8 @@ public class SessionStateResponse
     /// <summary>Gets or sets the playing item id.</summary>
     public Guid? ItemId { get; set; }
 
-    /// <summary>Gets or sets a value indicating whether the item is a movie.</summary>
-    public bool IsMovie { get; set; }
+    /// <summary>Gets or sets a value indicating whether the item is a movie or an episode (the kinds Up Next looks at).</summary>
+    public bool IsSupported { get; set; }
 
     /// <summary>Gets or sets the last reported position.</summary>
     public long? PositionTicks { get; set; }

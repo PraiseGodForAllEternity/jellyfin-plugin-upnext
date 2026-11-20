@@ -11,6 +11,7 @@ using Jellyfin.Plugin.UpNext.Configuration;
 using Jellyfin.Plugin.UpNext.Services;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaSegments;
 using MediaBrowser.Controller.Net;
@@ -120,7 +121,7 @@ public class UpNextController : ControllerBase
         return new SessionStateResponse
         {
             ItemId = playing.Id,
-            IsMovie = playing.Type == BaseItemKind.Movie,
+            IsSupported = playing.Type == BaseItemKind.Movie || playing.Type == BaseItemKind.Episode,
             PositionTicks = session.PlayState?.PositionTicks,
             ReportAgeMs = Math.Max(0, (DateTime.UtcNow - session.LastPlaybackCheckIn).TotalMilliseconds),
             IsPaused = session.PlayState?.IsPaused ?? false,
@@ -182,19 +183,36 @@ public class UpNextController : ControllerBase
             StillWatchingAfter = Math.Clamp(config.StillWatchingAfter, 0, 20)
         };
 
-        if (item is not Movie || prefs.Mode == UpNextMode.Off)
+        if (prefs.Mode == UpNextMode.Off)
         {
             return response;
         }
 
-        response.CreditsStartTicks = await GetCreditsStart(item).ConfigureAwait(false);
-
-        var pick = _nextMovies.Pick(user, item, Math.Clamp(config.SuggestionCount, 0, 6));
-        if (pick is not null)
+        var count = Math.Clamp(config.SuggestionCount, 0, 6);
+        var pick = item switch
         {
-            response.Next = MovieCard.From(pick.Next);
-            response.CollectionName = pick.CollectionName;
-            response.Suggestions = pick.Suggestions.Select(MovieCard.From).ToList();
+            Movie => _nextMovies.Pick(user, item, count),
+            Episode episode => _nextMovies.PickAfterEpisode(user, episode, count),
+            _ => null
+        };
+
+        if (pick is null)
+        {
+            // Includes every episode except a show's last one: Jellyfin handles those itself.
+            return response;
+        }
+
+        response.CreditsStartTicks = await GetCreditsStart(item).ConfigureAwait(false);
+        response.Next = MovieCard.From(pick.Next);
+        response.Context = pick.Context.ToString();
+        response.SourceName = pick.SourceName;
+        response.CollectionName = pick.Context == PickContext.Collection ? pick.SourceName : null;
+        response.Suggestions = pick.Suggestions.Select(s => MovieCard.From(s)).ToList();
+
+        // Caught up on a show that's still airing: offer, but never start something on our own.
+        if (pick.Context == PickContext.CaughtUp && prefs.Mode == UpNextMode.Autoplay)
+        {
+            response.Mode = UpNextMode.SuggestionsOnly.ToString();
         }
 
         return response;
@@ -234,9 +252,9 @@ public class UpNextController : ControllerBase
             return NotFound();
         }
 
-        // Movies only: this endpoint exists for Up Next, not as a general remote control.
+        // Movies and episodes only: this endpoint exists for Up Next, not as a general remote control.
         var item = _libraryManager.GetItemById(itemId);
-        if (item is not Movie || !item.IsVisible(user))
+        if (item is not (Movie or Episode) || !item.IsVisible(user))
         {
             return NotFound();
         }

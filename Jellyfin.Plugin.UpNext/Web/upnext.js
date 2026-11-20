@@ -205,7 +205,7 @@
             state.session = s;
             state.sessionAt = Date.now();
 
-            var id = s && s.IsMovie ? s.ItemId : null;
+            var id = s && s.IsSupported ? s.ItemId : null;
             if (id !== state.itemId) {
                 onItemChanged(id);
             }
@@ -271,7 +271,7 @@
 
         if (state.phase === 'card' && info.Mode === 'Autoplay') {
             // Credits are over: no reason to keep waiting.
-            autoPlay(info.Next.Id);
+            autoPlay(playIdOf(info.Next));
             return;
         }
 
@@ -311,7 +311,7 @@
         wireCard(root);
 
         if (info.Mode === 'Autoplay' && !state.asking) {
-            startCountdown(info.CountdownSeconds, info.Next.Id);
+            startCountdown(info.CountdownSeconds, playIdOf(info.Next));
         }
 
         setTimeout(function () {
@@ -320,6 +320,25 @@
                 primary.focus();
             }
         }, 50);
+    }
+
+    // A show's card shows the series but starts its first episode.
+    function playIdOf(card) {
+        return card ? (card.PlayId || card.Id) : null;
+    }
+
+    function cardLabel(info) {
+        var source = escapeHtml(info.SourceName || info.CollectionName || '');
+        switch (info.Context) {
+            case 'Collection':
+                return 'Next in ' + source;
+            case 'SeriesFinale':
+                return 'You finished ' + source + ' &middot; Up next';
+            case 'CaughtUp':
+                return 'You\'re all caught up on ' + source;
+            default:
+                return 'Up Next';
+        }
     }
 
     function renderCard(info, ended) {
@@ -335,10 +354,11 @@
         if (next.RunTimeTicks) {
             meta.push(formatRuntime(next.RunTimeTicks));
         }
+        if (next.Kind === 'Series') {
+            meta.push('TV Series');
+        }
 
-        var label = info.CollectionName
-            ? 'Next in ' + escapeHtml(info.CollectionName)
-            : 'Up Next';
+        var label = cardLabel(info);
 
         var title = next.HasLogo
             ? '<img class="upnext-logo" alt="' + escapeHtml(next.Name) + '" src="' + escapeHtml(imageUrl(next.Id, 'Logo', 600)) + '">'
@@ -364,12 +384,15 @@
         html += '<div class="upnext-info">';
         html += '<div class="upnext-label">' + label + '</div>';
         html += title;
+        if (next.Subtitle) {
+            html += '<div class="upnext-subtitle">' + escapeHtml(next.Subtitle) + '</div>';
+        }
         html += '<div class="upnext-meta">' + meta.join('<span class="upnext-dot">&bull;</span>') + '</div>';
         if (next.Overview) {
             html += '<p class="upnext-overview">' + escapeHtml(next.Overview) + '</p>';
         }
         html += '<div class="upnext-buttons">';
-        html += '<button type="button" class="upnext-btn upnext-play upnext-focusable" data-action="play" data-id="' + escapeHtml(next.Id) + '">' +
+        html += '<button type="button" class="upnext-btn upnext-play upnext-focusable" data-action="play" data-id="' + escapeHtml(playIdOf(next)) + '">' +
             '<span class="upnext-fill"></span>' +
             '<span class="upnext-btn-text"><span class="material-icons play_arrow" aria-hidden="true"></span>' +
             playLabel + '<span class="upnext-count"></span></span></button>';
@@ -383,7 +406,7 @@
             for (var i = 0; i < info.Suggestions.length; i++) {
                 var s = info.Suggestions[i];
                 var thumb = imageUrl(s.Id, s.HasBackdrop ? 'Backdrop' : 'Primary', 480);
-                html += '<button type="button" class="upnext-tile upnext-focusable" data-action="play" data-id="' + escapeHtml(s.Id) + '" title="' + escapeHtml(s.Name) + '">' +
+                html += '<button type="button" class="upnext-tile upnext-focusable" data-action="play" data-id="' + escapeHtml(playIdOf(s)) + '" title="' + escapeHtml(s.Name) + '">' +
                     '<span class="upnext-tile-img" style="' + bgStyle(thumb) + '"></span>' +
                     '<span class="upnext-tile-name">' + escapeHtml(s.Name) + (s.Year ? ' <span class="upnext-tile-year">' + escapeHtml(s.Year) + '</span>' : '') + '</span>' +
                     '</button>';
@@ -832,7 +855,7 @@
             // Opening settings paused the countdown; pick it back up.
             var info = state.info;
             if (info && info.Next && info.Mode === 'Autoplay' && !state.countdown && state.phase !== 'idle') {
-                startCountdown(info.CountdownSeconds, info.Next.Id);
+                startCountdown(info.CountdownSeconds, playIdOf(info.Next));
             }
         }
     }
@@ -903,6 +926,7 @@
             '.upnext-label{text-transform:uppercase;letter-spacing:.14em;font-size:.9em;font-weight:600;color:#cfcfcf;margin-bottom:.6em}',
             '.upnext-title{font-size:2.6em;line-height:1.1;margin:0 0 .25em;font-weight:700;text-shadow:0 2px 12px rgba(0,0,0,.6)}',
             '.upnext-logo{max-width:min(28em,40vw);max-height:16vh;display:block;margin-bottom:.6em;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}',
+            '.upnext-subtitle{color:#eee;font-size:1.05em;font-weight:600;margin:-.2em 0 .5em}',
             '.upnext-meta{color:#ddd;font-size:1em;margin-bottom:.7em;display:flex;align-items:center;flex-wrap:wrap}',
             '.upnext-dot{margin:0 .5em;color:#888}',
             '.upnext-rating{border:1px solid #aaa;padding:0 .35em;border-radius:3px;font-size:.85em}',

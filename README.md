@@ -11,7 +11,7 @@
 
 # Up Next for Jellyfin
 
-Netflix-style "Up Next" for movies. When a movie reaches its credits, the video shrinks to the top-left corner and a card counts down to the next film.
+Netflix-style "Up Next" for movies, and for when a TV show runs out of episodes. When a movie reaches its credits, the video shrinks to the top-left corner and a card counts down to the next film.
 
 ![The Up Next card: the finished movie shrinks to the corner while the next film in the collection counts down](images/up-next-card.jpg)
 
@@ -22,13 +22,22 @@ Netflix-style "Up Next" for movies. When a movie reaches its credits, the video 
 - **"Are you still watching?"** After 3 movies autoplay in a row with nobody touching anything, Up Next asks before starting another, so a marathon doesn't run all night after everyone falls asleep.
 - **Series-aware suggestions:** if a suggestion is part of a series, you get the first part you haven't seen, never the middle of a trilogy.
 
+### TV shows
+
+Between episodes, nothing changes: Jellyfin's own next-episode autoplay keeps working as usual. Up Next only steps in on the **last episode** of a show:
+
+- **The show has ended:** the card counts down to a similar show you haven't started, from Season 1, Episode 1. Movies that share a collection with the show are suggested too.
+- **The show is still airing** (you're on the newest episode): the card says *"You're all caught up"* and offers suggestions, but never starts anything on its own.
+
+A show counts as ended only when its metadata says so. Unknown status is treated as still airing.
+
 | Settings for each user | On a phone |
 |---|---|
 | ![Up Next settings dialog with autoplay, no-autoplay and off options](images/settings.jpg) | ![The Up Next card on a phone held sideways](images/phone.jpg) |
-| **Are you still watching?** | |
-| ![After several movies autoplay in a row, Up Next asks before starting another](images/still-watching.jpg) | |
+| **Are you still watching?** | **After a series finale** |
+| ![After several movies autoplay in a row, Up Next asks before starting another](images/still-watching.jpg) | ![After the last episode of a show, the next show counts down](images/series-finale.jpg) |
 
-<sub>Screenshots use made-up demo movies.</sub>
+<sub>Screenshots use made-up demo movies and shows.</sub>
 
 ## Requirements
 

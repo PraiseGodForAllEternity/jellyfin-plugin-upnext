@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0.0
+
+- New: Up Next for TV shows, on the last episode only. Episode-to-episode autoplay is still Jellyfin's own.
+  - Series finale (the show has ended): counts down to a similar show you haven't started, from Season 1, Episode 1, and suggests movies that share a collection with the show.
+  - Caught up (the show is still airing): "You're all caught up" with suggestions, never autoplay.
+- Roku, Android TV and other apps also get the next show after a finale (not when caught up), and it counts toward "Are you still watching?".
+
 ## 1.1.0.0
 
 - New: "Are you still watching?" After 3 movies autoplay in a row with nobody touching anything (adjustable, or off), Up Next asks before starting the next one. On apps that can't show the question, such as Roku and Android TV, the server just doesn't start another.

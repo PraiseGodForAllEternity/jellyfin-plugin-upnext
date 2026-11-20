@@ -7,19 +7,48 @@ using Jellyfin.Database.Implementations.Enums;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.UpNext.Services;
 
 /// <summary>
-/// The movie to play next plus a few alternatives.
+/// Why this is what's up next. Drives the label on the card and whether it autoplays.
 /// </summary>
-/// <param name="Next">The movie that will autoplay.</param>
-/// <param name="CollectionName">The collection the pick came from, or null if it's a similar-movie pick.</param>
-/// <param name="Suggestions">Other movies to offer.</param>
-public record UpNextPick(BaseItem Next, string? CollectionName, IReadOnlyList<BaseItem> Suggestions);
+public enum PickContext
+{
+    /// <summary>The next film in a collection.</summary>
+    Collection,
+
+    /// <summary>A similar movie or show.</summary>
+    Similar,
+
+    /// <summary>The last episode of a show that has ended.</summary>
+    SeriesFinale,
+
+    /// <summary>The newest episode of a show that's still airing. Never autoplays.</summary>
+    CaughtUp
+}
+
+/// <summary>
+/// Something to offer: what to show on the card, and what actually plays.
+/// For a show that's the series (art, title) and its first episode.
+/// </summary>
+/// <param name="Display">Item whose title and artwork are shown.</param>
+/// <param name="Play">Item that starts when picked.</param>
+public record Suggestion(BaseItem Display, BaseItem Play);
+
+/// <summary>
+/// What plays next plus a few alternatives.
+/// </summary>
+/// <param name="Next">The pick that will autoplay.</param>
+/// <param name="Context">Why it was picked.</param>
+/// <param name="SourceName">The collection or show the pick relates to, if any.</param>
+/// <param name="Suggestions">Other things to offer.</param>
+public record UpNextPick(Suggestion Next, PickContext Context, string? SourceName, IReadOnlyList<Suggestion> Suggestions);
 
 /// <summary>
 /// Decides what plays after a movie.
@@ -113,7 +142,154 @@ public class NextMovieService
             return null;
         }
 
-        return new UpNextPick(next, collectionName, similar.Take(Math.Max(0, suggestionCount)).ToList());
+        return new UpNextPick(
+            new Suggestion(next, next),
+            collectionName is null ? PickContext.Similar : PickContext.Collection,
+            collectionName,
+            similar.Take(Math.Max(0, suggestionCount)).Select(m => new Suggestion(m, m)).ToList());
+    }
+
+    /// <summary>
+    /// Picks what plays after an episode. Only the last episode of a show gets a pick;
+    /// everything earlier is left to Jellyfin's own next-episode autoplay.
+    /// </summary>
+    /// <param name="user">The viewer.</param>
+    /// <param name="episode">The episode that's ending.</param>
+    /// <param name="suggestionCount">How many alternatives to include.</param>
+    /// <returns>The pick, or null if this isn't a show's last episode or nothing fits.</returns>
+    public UpNextPick? PickAfterEpisode(User user, Episode episode, int suggestionCount)
+    {
+        var series = episode.Series;
+        if (series is null || (episode.ParentIndexNumber ?? 0) <= 0)
+        {
+            // Specials sit outside the normal order; leave them alone.
+            return null;
+        }
+
+        var episodes = RegularEpisodes(user, series);
+        if (episodes.Count == 0 || !episodes[^1].Id.Equals(episode.Id))
+        {
+            return null;
+        }
+
+        // Only an explicitly ended show counts as finished; unknown status is treated as still airing.
+        var context = series.Status == SeriesStatus.Ended ? PickContext.SeriesFinale : PickContext.CaughtUp;
+        var count = Math.Max(0, suggestionCount);
+
+        var related = new List<Suggestion>();
+        var boxSets = LoadCollections(user);
+        try
+        {
+            foreach (var boxSet in FindCollections(boxSets, series))
+            {
+                foreach (var film in OrderedFilms(user, boxSet).Where(f => !IsPlayed(user, f)))
+                {
+                    if (!related.Any(r => r.Play.Id.Equals(film.Id)))
+                    {
+                        related.Add(new Suggestion(film, film));
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Up Next: couldn't read collections for {Name}", series.Name);
+        }
+
+        var shows = SimilarShows(user, series, count + 1);
+
+        // Another show is the natural follow-up; related movies fill in when there's none.
+        var next = shows.FirstOrDefault() ?? related.FirstOrDefault();
+        if (next is null)
+        {
+            return null;
+        }
+
+        var suggestions = related.Where(r => r != next).Take(2)
+            .Concat(shows.Where(s => s != next))
+            .Take(count)
+            .ToList();
+
+        return new UpNextPick(next, context, series.Name, suggestions);
+    }
+
+    private static List<Episode> RegularEpisodes(User user, Series series)
+    {
+        return series.GetEpisodes(user, new DtoOptions(false), false)
+            .OfType<Episode>()
+            .Where(e => !e.IsVirtualItem && (e.ParentIndexNumber ?? 0) > 0)
+            .ToList();
+    }
+
+    private List<Suggestion> SimilarShows(User user, Series current, int count)
+    {
+        var result = new List<Suggestion>();
+        if (count <= 0)
+        {
+            return result;
+        }
+
+        try
+        {
+            // "Unstarted" means no episode watched or partly watched.
+            var started = StartedSeriesIds(user);
+            started.Add(current.Id);
+
+            var query = new InternalItemsQuery(user)
+            {
+                IncludeItemTypes = new[] { BaseItemKind.Series },
+                Recursive = true,
+                ExcludeItemIds = started.ToArray(),
+                Limit = 200,
+                DtoOptions = new DtoOptions(false)
+            };
+
+            var ranked = _libraryManager.GetItemList(query)
+                .OfType<Series>()
+                .OrderByDescending(s => Similarity(current, s));
+
+            foreach (var show in ranked)
+            {
+                var first = RegularEpisodes(user, show).FirstOrDefault();
+                if (first is not null)
+                {
+                    result.Add(new Suggestion(show, first));
+                    if (result.Count >= count)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Up Next: couldn't find shows similar to {Name}", current.Name);
+        }
+
+        return result;
+    }
+
+    private HashSet<Guid> StartedSeriesIds(User user)
+    {
+        var ids = new HashSet<Guid>();
+        foreach (var played in new bool?[] { true, null })
+        {
+            var query = new InternalItemsQuery(user)
+            {
+                IncludeItemTypes = new[] { BaseItemKind.Episode },
+                Recursive = true,
+                IsPlayed = played,
+                IsResumable = played is null ? true : null,
+                DtoOptions = new DtoOptions(false)
+            };
+
+            foreach (var episode in _libraryManager.GetItemList(query).OfType<Episode>())
+            {
+                ids.Add(episode.SeriesId);
+            }
+        }
+
+        return ids;
     }
 
     private List<BoxSet> LoadCollections(User user)

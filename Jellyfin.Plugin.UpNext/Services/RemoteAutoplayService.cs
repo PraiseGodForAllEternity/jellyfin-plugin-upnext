@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Jellyfin.Plugin.UpNext.Api;
 using Jellyfin.Plugin.UpNext.Configuration;
 using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
 using Microsoft.Extensions.Hosting;
@@ -86,10 +87,12 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
         try
         {
             var config = PreferenceStore.Config;
-            if (!config.EnableRemoteAutoplay || e.Item is not Movie movie || e.Session is null)
+            if (!config.EnableRemoteAutoplay || e.Item is not (Movie or Episode) || e.Session is null)
             {
                 return;
             }
+
+            var movie = e.Item;
 
             // The web overlay already took care of this one.
             if (_claims.IsClaimed(e.Session.UserId, e.Session.DeviceId, movie.Id))
@@ -116,14 +119,18 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
                 // These apps can't ask "Are you still watching?", so just don't start another.
                 _chains.TryRemove(key, out _);
                 _logger.LogInformation(
-                    "Up Next: {Count} movies autoplayed in a row on {Client}; waiting for someone to pick the next one",
+                    "Up Next: {Count} titles autoplayed in a row on {Client}; waiting for someone to pick the next one",
                     chain,
                     e.ClientName);
                 return;
             }
 
-            var pick = _nextMovies.Pick(user, movie, 0);
-            if (pick is null)
+            var pick = movie is Episode episode
+                ? _nextMovies.PickAfterEpisode(user, episode, 0)
+                : _nextMovies.Pick(user, movie, 0);
+
+            // A show that's still airing never rolls into something else on its own.
+            if (pick is null || pick.Context == PickContext.CaughtUp)
             {
                 return;
             }
@@ -134,7 +141,7 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
                 "Up Next: {Movie} finished on {Client}; starting {Next} in {Delay}s",
                 movie.Name,
                 e.ClientName,
-                pick.Next.Name,
+                pick.Next.Display.Name,
                 delay.TotalSeconds);
 
             _ = Task.Run(() => PlayLater(sessionId, user, pick, delay, key, chain + 1), _stopping.Token);
@@ -186,21 +193,21 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
                 return;
             }
 
-            await UpNextController.SendPlay(_sessionManager, _userDataManager, session, user, pick.Next, _stopping.Token).ConfigureAwait(false);
+            await UpNextController.SendPlay(_sessionManager, _userDataManager, session, user, pick.Next.Play, _stopping.Token).ConfigureAwait(false);
 
             if (_chains.Count > 1000)
             {
                 _chains.Clear();
             }
 
-            _chains[chainKey] = (pick.Next.Id, chainCount);
+            _chains[chainKey] = (pick.Next.Play.Id, chainCount);
         }
         catch (OperationCanceledException)
         {
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Up Next: couldn't start {Next}", pick.Next.Name);
+            _logger.LogWarning(ex, "Up Next: couldn't start {Next}", pick.Next.Display.Name);
         }
     }
 }
