@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Up Next</title>
+</head>
+<body>
+    <div id="UpNextConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <h2 class="sectionTitle">Up Next</h2>
+                <p>When a movie reaches its credits, the video shrinks to the corner and the next film counts down, like Netflix.
+                    Movies in a collection play in release order; otherwise a similar unwatched movie is picked.
+                    Credits are found through the Intro Skipper plugin's credits segments.</p>
+
+                <form id="UpNextConfigForm">
+                    <h3 class="sectionTitle">Defaults for everyone</h3>
+
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="DefaultMode">When a movie reaches its credits</label>
+                        <select is="emby-select" id="DefaultMode" name="DefaultMode" class="emby-select-withcolor emby-select">
+                            <option value="Autoplay">Show Up Next and autoplay after the countdown</option>
+                            <option value="SuggestionsOnly">Show Up Next, but don't autoplay</option>
+                            <option value="Off">Off</option>
+                        </select>
+                        <div class="fieldDescription">Each user can change this for themselves under Settings &rarr; Up Next.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="DefaultCountdownSeconds">Countdown (seconds)</label>
+                        <input id="DefaultCountdownSeconds" name="DefaultCountdownSeconds" type="number" is="emby-input" min="5" max="60" />
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="FallbackSecondsBeforeEnd">Seconds before the end to show Up Next when no credits were detected</label>
+                        <input id="FallbackSecondsBeforeEnd" name="FallbackSecondsBeforeEnd" type="number" is="emby-input" min="10" max="1800" />
+                        <div class="fieldDescription">Used for movies Intro Skipper hasn't analyzed yet.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="SuggestionCount">Other suggestions to show</label>
+                        <input id="SuggestionCount" name="SuggestionCount" type="number" is="emby-input" min="0" max="6" />
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="SkipWatchedInCollections" name="SkipWatchedInCollections" type="checkbox" is="emby-checkbox" />
+                            <span>Skip movies already watched when picking the next film in a collection</span>
+                        </label>
+                    </div>
+
+                    <h3 class="sectionTitle">Apps</h3>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="EnableWebOverlay" name="EnableWebOverlay" type="checkbox" is="emby-checkbox" />
+                            <span>Show the Up Next screen in the web player</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">Browsers, Jellyfin Media Player, the Android and iOS apps, and LG webOS TVs. Reload the app after changing this.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="EnableRemoteAutoplay" name="EnableRemoteAutoplay" type="checkbox" is="emby-checkbox" />
+                            <span>Autoplay the next movie on other apps</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">Roku, Android TV, Fire TV and other apps that can't show the Up Next screen. The server starts the next movie after the delay below, when the app accepts remote commands.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="RemoteAutoplayDelaySeconds">Delay before autoplay on other apps (seconds)</label>
+                        <input id="RemoteAutoplayDelaySeconds" name="RemoteAutoplayDelaySeconds" type="number" is="emby-input" min="0" max="120" />
+                    </div>
+
+                    <h3 class="sectionTitle">User choices</h3>
+                    <div id="UpNextUserList" class="fieldDescription">Loading...</div>
+                    <div class="checkboxContainer">
+                        <label class="emby-checkbox-label">
+                            <input id="ClearUserChoices" type="checkbox" is="emby-checkbox" />
+                            <span>Clear every user's choices on save (everyone goes back to the defaults)</span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function () {
+                var pluginId = 'c592bf50-4d3e-427a-934c-5d9d38208e03';
+                var page = document.querySelector('#UpNextConfigPage');
+                var form = document.querySelector('#UpNextConfigForm');
+                var numbers = ['DefaultCountdownSeconds', 'FallbackSecondsBeforeEnd', 'SuggestionCount', 'RemoteAutoplayDelaySeconds'];
+                var checks = ['SkipWatchedInCollections', 'EnableWebOverlay', 'EnableRemoteAutoplay'];
+                var modeNames = { Autoplay: 'Autoplay', SuggestionsOnly: 'Up Next, no autoplay', Off: 'Off' };
+
+                function describeUsers(config) {
+                    var list = page.querySelector('#UpNextUserList');
+                    var prefs = config.UserPreferences || [];
+                    if (!prefs.length) {
+                        list.textContent = 'Everyone is using the defaults.';
+                        return;
+                    }
+                    ApiClient.getUsers().then(function (users) {
+                        var names = {};
+                        users.forEach(function (u) {
+                            names[u.Id.replace(/-/g, '').toLowerCase()] = u.Name;
+                        });
+                        list.innerHTML = '';
+                        prefs.forEach(function (p) {
+                            var key = String(p.UserId).replace(/-/g, '').toLowerCase();
+                            var parts = [];
+                            if (p.Mode != null) {
+                                parts.push(modeNames[p.Mode] || p.Mode);
+                            }
+                            if (p.CountdownSeconds != null) {
+                                parts.push(p.CountdownSeconds + 's countdown');
+                            }
+                            var row = document.createElement('div');
+                            row.textContent = (names[key] || 'Unknown user') + ': ' + parts.join(', ');
+                            list.appendChild(row);
+                        });
+                    });
+                }
+
+                page.addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        page.querySelector('#DefaultMode').value = config.DefaultMode;
+                        numbers.forEach(function (n) {
+                            page.querySelector('#' + n).value = config[n];
+                        });
+                        checks.forEach(function (n) {
+                            page.querySelector('#' + n).checked = !!config[n];
+                        });
+                        page.querySelector('#ClearUserChoices').checked = false;
+                        describeUsers(config);
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        config.DefaultMode = page.querySelector('#DefaultMode').value;
+                        numbers.forEach(function (n) {
+                            config[n] = parseInt(page.querySelector('#' + n).value, 10) || 0;
+                        });
+                        checks.forEach(function (n) {
+                            config[n] = page.querySelector('#' + n).checked;
+                        });
+                        if (page.querySelector('#ClearUserChoices').checked) {
+                            config.UserPreferences = [];
+                        }
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                            page.querySelector('#ClearUserChoices').checked = false;
+                            describeUsers(config);
+                        });
+                    });
+                    return false;
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>
