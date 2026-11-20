@@ -93,6 +93,15 @@
                         </button>
                     </div>
                 </form>
+
+                <h3 class="sectionTitle" style="margin-top:2.5em">Check a movie</h3>
+                <p class="fieldDescription">See what Up Next would play after a movie or episode, which series it found, and when the card would appear.</p>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="UpNextCheckSearch">Movie or episode name</label>
+                    <input id="UpNextCheckSearch" type="text" is="emby-input" autocomplete="off" />
+                </div>
+                <div id="UpNextCheckResults"></div>
+                <div id="UpNextCheckOutput" style="margin-top:1em;line-height:1.6"></div>
             </div>
         </div>
 
@@ -154,6 +163,97 @@
                         describeUsers(config);
                         Dashboard.hideLoadingMsg();
                     });
+                });
+
+                // ---- Check a movie ----
+                function el(tag, text, style) {
+                    var e = document.createElement(tag);
+                    if (text != null) {
+                        e.textContent = text;
+                    }
+                    if (style) {
+                        e.setAttribute('style', style);
+                    }
+                    return e;
+                }
+
+                function clock(ticks) {
+                    if (ticks == null) {
+                        return '?';
+                    }
+                    var s = Math.round(ticks / 10000000);
+                    var h = Math.floor(s / 3600);
+                    var m = Math.floor((s % 3600) / 60);
+                    var sec = s % 60;
+                    return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+                }
+
+                var reasons = {
+                    Collection: 'next film in its series',
+                    Similar: 'a similar movie (not part of a series, or the last one)',
+                    SeriesFinale: 'a new show after this finale',
+                    CaughtUp: 'suggestions only (show still airing)'
+                };
+
+                function showDiagnosis(d) {
+                    var out = page.querySelector('#UpNextCheckOutput');
+                    out.innerHTML = '';
+                    out.appendChild(el('h4', d.Name + (d.Year ? ' (' + d.Year + ')' : ''), 'margin:.2em 0'));
+                    out.appendChild(el('div', 'Up Next card appears at ' + clock(d.CreditsStartTicks) + ' of ' + clock(d.RunTimeTicks) + '. Source: ' + d.CreditsSource));
+                    out.appendChild(el('div', 'Plays next: ' + (d.Next ? d.Next + ' (' + (reasons[d.NextReason] || d.NextReason) + ')' : 'nothing')));
+                    if (d.RunTimeTicks != null) {
+                        out.appendChild(el('div', 'TMDb series id in metadata: ' + (d.TmdbSeriesId || 'none'), 'color:#aaa'));
+                    }
+                    if (!d.Series || !d.Series.length) {
+                        out.appendChild(el('div', 'No film series found for this title.', 'color:#aaa'));
+                    }
+                    (d.Series || []).forEach(function (s, i) {
+                        out.appendChild(el('div', (i === 0 ? 'Series used: ' : 'Also found: ') + (s.Name || '(unnamed)') + ' — ' + s.Source, 'margin-top:.8em;font-weight:600'));
+                        var list = el('ol', null, 'margin:.2em 0 0 1.2em;padding:0');
+                        s.Films.forEach(function (f) {
+                            list.appendChild(el('li', f.Name + ' — ' + (f.Released || f.Year || 'no date') + (f.IsThis ? '   ← this one' : ''), f.IsThis ? 'font-weight:600' : ''));
+                        });
+                        out.appendChild(list);
+                    });
+                }
+
+                var searchTimer = null;
+                page.querySelector('#UpNextCheckSearch').addEventListener('input', function (e) {
+                    clearTimeout(searchTimer);
+                    var term = e.target.value.trim();
+                    var results = page.querySelector('#UpNextCheckResults');
+                    if (term.length < 2) {
+                        results.innerHTML = '';
+                        return;
+                    }
+                    searchTimer = setTimeout(function () {
+                        ApiClient.getItems(ApiClient.getCurrentUserId(), {
+                            SearchTerm: term,
+                            IncludeItemTypes: 'Movie,Episode',
+                            Recursive: true,
+                            Limit: 8,
+                            Fields: 'ProductionYear'
+                        }).then(function (r) {
+                            results.innerHTML = '';
+                            (r.Items || []).forEach(function (item) {
+                                var label = (item.SeriesName ? item.SeriesName + ' — ' : '') + item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '');
+                                var b = el('button', label);
+                                b.type = 'button';
+                                b.className = 'emby-button raised';
+                                b.style.cssText = 'display:block;margin:.3em 0;text-align:left';
+                                b.addEventListener('click', function () {
+                                    page.querySelector('#UpNextCheckOutput').textContent = 'Checking...';
+                                    ApiClient.getJSON(ApiClient.getUrl('UpNext/Diagnose/' + item.Id)).then(showDiagnosis, function () {
+                                        page.querySelector('#UpNextCheckOutput').textContent = 'Could not check this title.';
+                                    });
+                                });
+                                results.appendChild(b);
+                            });
+                            if (!r.Items || !r.Items.length) {
+                                results.textContent = 'No matches.';
+                            }
+                        });
+                    }, 300);
                 });
 
                 form.addEventListener('submit', function (e) {

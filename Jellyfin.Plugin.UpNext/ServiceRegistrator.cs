@@ -18,6 +18,7 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<PreferenceStore>();
         serviceCollection.AddSingleton<ClaimTracker>();
         serviceCollection.AddSingleton<NextMovieService>();
+        serviceCollection.AddSingleton<CreditsLocator>();
         serviceCollection.AddHostedService<RemoteAutoplayService>();
         serviceCollection.AddHostedService<FileTransformationRegistration>();
         serviceCollection.AddTransient<IStartupFilter, IndexHtmlStartupFilter>();

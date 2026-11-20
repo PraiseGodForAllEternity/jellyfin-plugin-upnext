@@ -53,7 +53,7 @@ If the movie isn't part of a series, or it's the last one, Up Next picks a simil
 ## Requirements
 
 - Jellyfin **10.11**
-- [Intro Skipper](https://github.com/intro-skipper/intro-skipper), recommended, so Up Next knows exactly when the credits start. Without it, the card shows up a set number of seconds before the end (3 minutes by default).
+- [Intro Skipper](https://github.com/intro-skipper/intro-skipper), recommended, so Up Next knows exactly when the credits start. Make sure its credits detection is on and has finished analyzing your library: if Jellyfin shows a "Skip credits" button, it's working. Without it, Up Next uses a chapter named like "End Credits" if the file has one, and otherwise shows the card a set time before the end (3 minutes by default), which can be late for movies with long credits.
 
 ## Install
 
@@ -88,6 +88,7 @@ The Up Next screen runs inside Jellyfin's web player, so apps with their own nat
 - How early to show Up Next when no credits were detected
 - How many movies can autoplay in a row before asking "Are you still watching?" (default 3, 0 = never ask)
 - How many other suggestions to show
+- **Check a movie:** search for any movie or episode to see which series Up Next found, the play order, what plays next, and when the card will appear (and why)
 - Skip already-watched movies when continuing a collection
 - Turn the web screen or the server-side autoplay on or off
 

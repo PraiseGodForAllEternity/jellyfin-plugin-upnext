@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0.0
+
+- New: **Check a movie** on the Up Next settings page. Pick any movie or episode to see which series Up Next found, the play order, what plays next, and when the card appears and why.
+- New: when Intro Skipper hasn't found the credits, Up Next uses a chapter named like "Credits", "End Credits" or "End Titles" if the file has one, instead of a flat 3 minutes before the end.
+
 ## 1.3.0.0
 
 - New: film series work without any Jellyfin collections. Up Next now also uses the TMDb series recorded in each movie's metadata, which Jellyfin stores even when "Automatically add to collection" is off (the default). So Resident Evil → Apocalypse → Extinction → … plays in order on a stock setup. Collections still come first when they exist.

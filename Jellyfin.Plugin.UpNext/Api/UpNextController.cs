@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Mime;
@@ -36,7 +37,7 @@ public class UpNextController : ControllerBase
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
     private readonly IAuthorizationContext _authContext;
-    private readonly IMediaSegmentManager _segmentManager;
+    private readonly CreditsLocator _credits;
     private readonly NextMovieService _nextMovies;
     private readonly PreferenceStore _preferences;
     private readonly ClaimTracker _claims;
@@ -50,7 +51,7 @@ public class UpNextController : ControllerBase
     /// <param name="userManager">User manager.</param>
     /// <param name="userDataManager">User data manager.</param>
     /// <param name="authContext">Authorization context.</param>
-    /// <param name="segmentManager">Media segment manager.</param>
+    /// <param name="credits">Credits finder.</param>
     /// <param name="nextMovies">Next movie picker.</param>
     /// <param name="preferences">Preference store.</param>
     /// <param name="claims">Overlay claim tracker.</param>
@@ -61,7 +62,7 @@ public class UpNextController : ControllerBase
         IUserManager userManager,
         IUserDataManager userDataManager,
         IAuthorizationContext authContext,
-        IMediaSegmentManager segmentManager,
+        CreditsLocator credits,
         NextMovieService nextMovies,
         PreferenceStore preferences,
         ClaimTracker claims,
@@ -72,7 +73,7 @@ public class UpNextController : ControllerBase
         _userManager = userManager;
         _userDataManager = userDataManager;
         _authContext = authContext;
-        _segmentManager = segmentManager;
+        _credits = credits;
         _nextMovies = nextMovies;
         _preferences = preferences;
         _claims = claims;
@@ -421,28 +422,77 @@ public class UpNextController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Admin tool: shows what Up Next sees for an item (series found, play order, what's
+    /// next, and where the credits timing comes from), as the calling admin.
+    /// </summary>
+    /// <param name="itemId">Movie or episode.</param>
+    /// <returns>Plain-language diagnosis.</returns>
+    [HttpGet("Diagnose/{itemId}")]
+    [Authorize(Policy = "RequiresElevation")]
+    public async Task<ActionResult<DiagnoseResponse>> Diagnose([FromRoute] Guid itemId)
+    {
+        var user = await GetCallerUser().ConfigureAwait(false);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        var item = _libraryManager.GetItemById(itemId);
+        if (item is not (Movie or Episode) || !item.IsVisible(user))
+        {
+            return NotFound();
+        }
+
+        var config = PreferenceStore.Config;
+        var credits = await _credits.Find(item).ConfigureAwait(false);
+        var runtime = item.RunTimeTicks ?? 0;
+        var fallback = Math.Max(runtime / 2, runtime - TimeSpan.FromSeconds(Math.Max(10, config.FallbackSecondsBeforeEnd)).Ticks);
+
+        var response = new DiagnoseResponse
+        {
+            Name = item.Name,
+            Year = item.ProductionYear,
+            RunTimeTicks = item.RunTimeTicks,
+            CreditsStartTicks = credits.StartTicks ?? fallback,
+            CreditsSource = credits.Source ?? $"Not detected; using the fallback ({Math.Max(10, config.FallbackSecondsBeforeEnd)} seconds before the end)"
+        };
+
+        if (item is Movie)
+        {
+            var (series, tmdbId) = _nextMovies.Explain(user, item);
+            response.TmdbSeriesId = tmdbId;
+            foreach (var (source, name, films) in series)
+            {
+                response.Series.Add(new DiagnoseSeries
+                {
+                    Source = source,
+                    Name = name,
+                    Films = films.Select(f => new DiagnoseFilm
+                    {
+                        Name = f.Name,
+                        Year = f.ProductionYear,
+                        Released = f.PremiereDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        IsThis = f.Id.Equals(item.Id)
+                    }).ToList()
+                });
+            }
+        }
+
+        var pick = item switch
+        {
+            Movie => _nextMovies.Pick(user, item, 0),
+            Episode episode => _nextMovies.PickAfterEpisode(user, episode, 0),
+            _ => null
+        };
+        response.Next = pick?.Next.Display.Name;
+        response.NextReason = pick?.Context.ToString();
+        return response;
+    }
+
     private async Task<long?> GetCreditsStart(BaseItem item)
     {
-        try
-        {
-            var segments = await _segmentManager.GetSegmentsAsync(
-                item,
-                new[] { MediaSegmentType.Outro },
-                _libraryManager.GetLibraryOptions(item)).ConfigureAwait(false);
-
-            // Ignore anything in the first half; that's a mislabeled segment, not end credits.
-            var half = (item.RunTimeTicks ?? 0) / 2;
-            return segments
-                .Where(s => s.Type == MediaSegmentType.Outro && s.StartTicks > half)
-                .OrderBy(s => s.StartTicks)
-                .Select(s => (long?)s.StartTicks)
-                .FirstOrDefault();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Up Next: no credits segment for {Name}", item.Name);
-            return null;
-        }
+        return (await _credits.Find(item).ConfigureAwait(false)).StartTicks;
     }
 
     private async Task<User?> GetCallerUser()

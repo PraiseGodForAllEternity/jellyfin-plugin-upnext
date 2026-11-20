@@ -100,7 +100,7 @@ public class NextMovieService
 
         try
         {
-            foreach (var (name, films) in FilmSeries(user, current, boxSets, seriesCache))
+            foreach (var (_, name, films) in FilmSeries(user, current, boxSets, seriesCache))
             {
                 var index = films.FindIndex(m => m.Id.Equals(current.Id));
                 if (index < 0)
@@ -355,7 +355,21 @@ public class NextMovieService
     /// library's "Automatically add to collection" option is on), then the TMDb series
     /// recorded in its metadata, which works even when no collection exists.
     /// </summary>
-    private IEnumerable<(string? Name, List<BaseItem> Films)> FilmSeries(
+    /// <summary>
+    /// For the admin page's "Check a movie" tool: every film series Up Next finds for a
+    /// movie, in the order it consults them, with the films in play order.
+    /// </summary>
+    /// <param name="user">The viewer.</param>
+    /// <param name="movie">The movie.</param>
+    /// <returns>Series found, plus the movie's TMDb series id (null if it has none).</returns>
+    public (IReadOnlyList<(string Source, string? Name, List<BaseItem> Films)> Series, string? TmdbSeriesId) Explain(User user, BaseItem movie)
+    {
+        var full = _libraryManager.GetItemById(movie.Id) ?? movie;
+        var groups = FilmSeries(user, full, LoadCollections(user), new Dictionary<string, List<BaseItem>>(StringComparer.Ordinal)).ToList();
+        return (groups, full.GetProviderId(MetadataProvider.TmdbCollection));
+    }
+
+    private IEnumerable<(string Source, string? Name, List<BaseItem> Films)> FilmSeries(
         User user,
         BaseItem movie,
         IReadOnlyList<BoxSet> boxSets,
@@ -370,7 +384,7 @@ public class NextMovieService
                 cache[key] = films;
             }
 
-            yield return (boxSet.Name, films);
+            yield return ("Jellyfin collection", boxSet.Name, films);
         }
 
         // Items from search results may come without provider ids; the full record has them.
@@ -390,7 +404,7 @@ public class NextMovieService
             // A one-film "series" is just a standalone movie.
             if (films.Count > 1)
             {
-                yield return ((full as Movie)?.CollectionName, films);
+                yield return ("TMDb series " + tmdbId, (full as Movie)?.CollectionName, films);
             }
         }
     }
@@ -438,7 +452,7 @@ public class NextMovieService
     {
         try
         {
-            foreach (var (_, films) in FilmSeries(user, movie, boxSets, filmsCache))
+            foreach (var (_, _, films) in FilmSeries(user, movie, boxSets, filmsCache))
             {
                 if (films.Any(f => f.Id.Equals(movie.Id)))
                 {

@@ -198,3 +198,69 @@ public class PreferencesDto
     /// <summary>Gets or sets the server default countdown (read only).</summary>
     public int DefaultCountdownSeconds { get; set; }
 }
+
+/// <summary>
+/// What Up Next sees for one item (admin "Check a movie" tool).
+/// </summary>
+public class DiagnoseResponse
+{
+    /// <summary>Gets or sets the title.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the year.</summary>
+    public int? Year { get; set; }
+
+    /// <summary>Gets or sets the runtime.</summary>
+    public long? RunTimeTicks { get; set; }
+
+    /// <summary>Gets or sets when the Up Next card would appear.</summary>
+    public long? CreditsStartTicks { get; set; }
+
+    /// <summary>Gets or sets where that time comes from.</summary>
+    public string? CreditsSource { get; set; }
+
+    /// <summary>Gets or sets the TMDb film series id in the movie's metadata, if any.</summary>
+    public string? TmdbSeriesId { get; set; }
+
+    /// <summary>Gets or sets every series found, in the order Up Next consults them.</summary>
+    public List<DiagnoseSeries> Series { get; set; } = new();
+
+    /// <summary>Gets or sets what would play next.</summary>
+    public string? Next { get; set; }
+
+    /// <summary>Gets or sets why (Collection, Similar, SeriesFinale, CaughtUp).</summary>
+    public string? NextReason { get; set; }
+}
+
+/// <summary>
+/// One film series found for a movie.
+/// </summary>
+public class DiagnoseSeries
+{
+    /// <summary>Gets or sets where it came from.</summary>
+    public string Source { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets its name.</summary>
+    public string? Name { get; set; }
+
+    /// <summary>Gets or sets the films in play order.</summary>
+    public List<DiagnoseFilm> Films { get; set; } = new();
+}
+
+/// <summary>
+/// One film in a series.
+/// </summary>
+public class DiagnoseFilm
+{
+    /// <summary>Gets or sets the title.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the year.</summary>
+    public int? Year { get; set; }
+
+    /// <summary>Gets or sets the release date (yyyy-MM-dd).</summary>
+    public string? Released { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether this is the movie being checked.</summary>
+    public bool IsThis { get; set; }
+}
