@@ -106,6 +106,41 @@ Arrow keys move between buttons, **OK / Enter** picks one, and **Back / Esc** go
 - Starting the next movie goes through Jellyfin's own remote-control command, so the player handles it like any other "play" request.
 - For apps without the script, the server watches for a movie that played to the end and sends the same "play" command to that app.
 
+## Testing status
+
+Up Next is new. Here's what has actually been tested, and what hasn't yet. If you try it somewhere on the second list, please [open an issue](https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/issues) and say how it went.
+
+**Tested**
+
+- Jellyfin 10.11.11 on Windows (test server) and 10.11 on Ubuntu (real library)
+- The web player in a Chromium-based browser: the shrink-to-corner card, countdown, Play Now, Back to Browse, More Like This, Watch Credits, the end screen, and keyboard navigation
+- Next film from a Jellyfin collection, and from the TMDb series in a movie's metadata with no collection
+- Similar-movie picks, and series-aware suggestions (a series is suggested from its first unwatched part)
+- "Are you still watching?" in the web player
+- TV shows: series finale → next show from Season 1, Episode 1; still airing → "all caught up"
+- Credits timing from an "End Credits" chapter, and the time-before-the-end fallback
+- User settings, the admin settings page, and Check a movie
+- A phone-sized screen, by resizing a desktop browser
+- Server autoplay and "still watching" for other apps, using a simulated remote-controllable app
+
+**Not tested yet**
+
+- Credits timing from **Intro Skipper's** detected credits (the code is in place, but no test library had Intro Skipper results)
+- Real **Android TV, Fire TV, Google TV and Swiftfin** devices (only a simulated app)
+- The **Jellyfin Android and iOS apps** on a real phone, and touch controls
+- **LG webOS and Samsung Tizen** TVs, including their remotes and older built-in browsers
+- **Jellyfin Media Player** (desktop app), **Firefox** and **Safari**
+- Playback that's being **transcoded**, where the card timing relies on the server's position reports
+- Servers behind a **reverse proxy or with a base URL** (e.g. `example.com/jellyfin`)
+- The **File Transformation** plugin integration
+- **Large libraries**, multiple people watching at once, and users with **parental controls** or limited library access (handled in the code, not tested with real accounts)
+- Shows with **multiple seasons, specials or missing episodes** (tested with one-season shows)
+- Jellyfin versions other than 10.11 (12.x is not supported)
+
+**Known not to work**
+
+- **Roku:** the Jellyfin Roku app doesn't accept remote commands. See [Which apps get what](#which-apps-get-what).
+
 ## Building
 
 Requires the .NET 9 SDK or newer.
