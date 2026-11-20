@@ -12,8 +12,8 @@
                              "changelog":  "New: Up Next for TV shows on the last episode. After a series finale it counts down to a similar unstarted show; when you\u0027re caught up on a show still airing it offers suggestions without autoplay.",
                              "targetAbi":  "10.11.0.0",
                              "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.2.0.0/up-next_1.2.0.0.zip",
-                             "checksum":  "2f2164227eccbda0e80866318156950b",
-                             "timestamp":  "2026-11-20T12:19:16Z"
+                             "checksum":  "7063ea75c71a57e3c594ffe3b9f7d285",
+                             "timestamp":  "2026-11-20T12:19:49Z"
                          },
                          {
                              "version":  "1.1.0.0",
