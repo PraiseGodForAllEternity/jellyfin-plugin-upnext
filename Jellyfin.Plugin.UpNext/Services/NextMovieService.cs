@@ -235,29 +235,32 @@ public class NextMovieService
             var started = StartedSeriesIds(user);
             started.Add(current.Id);
 
-            var query = new InternalItemsQuery(user)
+            // Like movies: a random sample of genre matches (so large libraries aren't cut off
+            // alphabetically), ranked by similarity, then any unstarted show to fill the gaps.
+            var candidates = new List<Series>();
+            if (current.Genres.Length > 0)
             {
-                IncludeItemTypes = new[] { BaseItemKind.Series },
-                Recursive = true,
-                ExcludeItemIds = started.ToArray(),
-                Limit = 200,
-                DtoOptions = new DtoOptions(false)
-            };
+                candidates.AddRange(QueryShows(user, started, 120, current.Genres)
+                    .OrderByDescending(s => Similarity(current, s)));
+            }
 
-            var ranked = _libraryManager.GetItemList(query)
-                .OfType<Series>()
-                .OrderByDescending(s => Similarity(current, s));
-
-            foreach (var show in ranked)
+            var seen = new HashSet<Guid>(started);
+            foreach (var show in candidates.Concat(QueryShows(user, started, 60, null)))
             {
+                if (result.Count >= count)
+                {
+                    break;
+                }
+
+                if (!seen.Add(show.Id))
+                {
+                    continue;
+                }
+
                 var first = RegularEpisodes(user, show).FirstOrDefault();
                 if (first is not null)
                 {
                     result.Add(new Suggestion(show, first));
-                    if (result.Count >= count)
-                    {
-                        break;
-                    }
                 }
             }
         }
@@ -269,17 +272,40 @@ public class NextMovieService
         return result;
     }
 
+    private IEnumerable<Series> QueryShows(User user, HashSet<Guid> exclude, int limit, IReadOnlyList<string>? genres)
+    {
+        var query = new InternalItemsQuery(user)
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Series },
+            Recursive = true,
+            ExcludeItemIds = exclude.ToArray(),
+            Limit = limit,
+            OrderBy = new[] { (ItemSortBy.Random, SortOrder.Ascending) },
+            DtoOptions = new DtoOptions(false)
+        };
+
+        if (genres is not null)
+        {
+            query.Genres = genres;
+        }
+
+        return _libraryManager.GetItemList(query).OfType<Series>();
+    }
+
     private HashSet<Guid> StartedSeriesIds(User user)
     {
         var ids = new HashSet<Guid>();
         foreach (var played in new bool?[] { true, null })
         {
+            // One row per show, not one per episode: big watch histories stay cheap.
             var query = new InternalItemsQuery(user)
             {
                 IncludeItemTypes = new[] { BaseItemKind.Episode },
                 Recursive = true,
                 IsPlayed = played,
                 IsResumable = played is null ? true : null,
+                GroupBySeriesPresentationUniqueKey = true,
+                EnableTotalRecordCount = false,
                 DtoOptions = new DtoOptions(false)
             };
 

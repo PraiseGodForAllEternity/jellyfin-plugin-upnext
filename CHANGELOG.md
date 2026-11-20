@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1.0
+
+- Fixed: with more than 200 shows, similar-show picks only came from the first 200 alphabetically. Now a random sample of matching genres is ranked, like movies.
+- Fixed: finding shows you've started loaded your whole watch history; it now loads one entry per show, so series finales stay fast on big libraries.
+- Fixed: on some playback setups, the Up Next card could appear at the very start of a video if the server hadn't recorded a position yet.
+- Fixed: the end screen could stay on top of a movie you started yourself, especially when rewatching the same one.
+
 ## 1.2.0.0
 
 - New: Up Next for TV shows, on the last episode only. Episode-to-episode autoplay is still Jellyfin's own.

@@ -141,6 +141,16 @@
             return;
         }
 
+        // (The finished video can linger for a moment before Jellyfin removes it; that one
+        // reports ended or paused and must not count.)
+        if (state.phase === 'ended' && !video.ended && !video.paused) {
+            // Something started playing behind the end screen (maybe even the same
+            // movie again), so the end screen no longer applies.
+            closeCard();
+            state.itemId = null;
+            state.info = null;
+        }
+
         pollSession();
 
         var info = state.info;
@@ -187,7 +197,8 @@
         }
         var pos = s.PositionTicks / TICKS;
         if (!s.IsPaused) {
-            pos += (s.ReportAgeMs + (Date.now() - state.sessionAt)) / 1000;
+            // Only bridge the gap between reports; never guess further than that.
+            pos += Math.min(30, ((s.ReportAgeMs || 0) + (Date.now() - state.sessionAt)) / 1000);
         }
         return pos;
     }

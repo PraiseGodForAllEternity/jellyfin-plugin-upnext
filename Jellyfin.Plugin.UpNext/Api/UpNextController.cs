@@ -123,11 +123,23 @@ public class UpNextController : ControllerBase
             ItemId = playing.Id,
             IsSupported = playing.Type == BaseItemKind.Movie || playing.Type == BaseItemKind.Episode,
             PositionTicks = session.PlayState?.PositionTicks,
-            ReportAgeMs = Math.Max(0, (DateTime.UtcNow - session.LastPlaybackCheckIn).TotalMilliseconds),
+            ReportAgeMs = ReportAge(session.LastPlaybackCheckIn),
             IsPaused = session.PlayState?.IsPaused ?? false,
             RunTimeTicks = playing.RunTimeTicks,
             QueueHasNext = QueueHasNext(session, playing.Id)
         };
+    }
+
+    // How stale the last position report is. "Never reported" must not read as
+    // "decades old", or the overlay would think the movie is already over.
+    private static double ReportAge(DateTime lastCheckIn)
+    {
+        if (lastCheckIn == default)
+        {
+            return 0;
+        }
+
+        return Math.Clamp((DateTime.UtcNow - lastCheckIn).TotalMilliseconds, 0, 30000);
     }
 
     private static bool QueueHasNext(SessionInfo session, Guid playingId)

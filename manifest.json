@@ -8,6 +8,14 @@
         "category":  "General",
         "versions":  [
                          {
+                             "version":  "1.2.1.0",
+                             "changelog":  "Bug fixes: similar shows in large libraries, faster finales on big watch histories, card appearing too early in rare cases, end screen staying over a new movie.",
+                             "targetAbi":  "10.11.0.0",
+                             "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.2.1.0/up-next_1.2.1.0.zip",
+                             "checksum":  "14d77d7c95806d256ff58312fee5ef68",
+                             "timestamp":  "2026-11-20T12:28:26Z"
+                         },
+                         {
                              "version":  "1.2.0.0",
                              "changelog":  "New: Up Next for TV shows on the last episode. After a series finale it counts down to a similar unstarted show; when you\u0027re caught up on a show still airing it offers suggestions without autoplay.",
                              "targetAbi":  "10.11.0.0",
