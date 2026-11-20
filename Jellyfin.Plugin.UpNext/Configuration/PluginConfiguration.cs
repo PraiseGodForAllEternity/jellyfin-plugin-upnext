@@ -51,6 +51,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets the delay, in seconds, before the server starts the next movie on those apps.</summary>
     public int RemoteAutoplayDelaySeconds { get; set; } = 10;
 
+    /// <summary>
+    /// Gets or sets how many movies may autoplay in a row, with nobody touching anything,
+    /// before Up Next asks "Are you still watching?" instead. 0 turns the question off.
+    /// </summary>
+    public int StillWatchingAfter { get; set; } = 3;
+
     /// <summary>Gets or sets a value indicating whether movies the user has already watched are skipped when picking the next film in a collection.</summary>
     public bool SkipWatchedInCollections { get; set; }
 

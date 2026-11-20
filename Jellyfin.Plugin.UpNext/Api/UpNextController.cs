@@ -178,7 +178,8 @@ public class UpNextController : ControllerBase
             Mode = prefs.Mode.ToString(),
             CountdownSeconds = prefs.CountdownSeconds,
             RunTimeTicks = item.RunTimeTicks,
-            FallbackSecondsBeforeEnd = Math.Max(10, config.FallbackSecondsBeforeEnd)
+            FallbackSecondsBeforeEnd = Math.Max(10, config.FallbackSecondsBeforeEnd),
+            StillWatchingAfter = Math.Clamp(config.StillWatchingAfter, 0, 20)
         };
 
         if (item is not Movie || prefs.Mode == UpNextMode.Off)

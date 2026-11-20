@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,6 +29,11 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
     private readonly ClaimTracker _claims;
     private readonly ILogger<RemoteAutoplayService> _logger;
     private readonly CancellationTokenSource _stopping = new();
+
+    // Per user and device: the movie the server last started on its own, and how many
+    // it has started in a row. If that movie is the one that just ended, nobody picked
+    // anything in between, so the chain continues.
+    private readonly ConcurrentDictionary<(Guid UserId, string Device), (Guid ItemId, int Count)> _chains = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RemoteAutoplayService"/> class.
@@ -102,6 +108,20 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
                 return;
             }
 
+            var key = (user.Id, e.Session.DeviceId ?? e.Session.Id);
+            var chain = _chains.TryGetValue(key, out var link) && link.ItemId.Equals(movie.Id) ? link.Count : 0;
+            var limit = Math.Clamp(config.StillWatchingAfter, 0, 20);
+            if (limit > 0 && chain >= limit)
+            {
+                // These apps can't ask "Are you still watching?", so just don't start another.
+                _chains.TryRemove(key, out _);
+                _logger.LogInformation(
+                    "Up Next: {Count} movies autoplayed in a row on {Client}; waiting for someone to pick the next one",
+                    chain,
+                    e.ClientName);
+                return;
+            }
+
             var pick = _nextMovies.Pick(user, movie, 0);
             if (pick is null)
             {
@@ -117,7 +137,7 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
                 pick.Next.Name,
                 delay.TotalSeconds);
 
-            _ = Task.Run(() => PlayLater(sessionId, user, pick, delay), _stopping.Token);
+            _ = Task.Run(() => PlayLater(sessionId, user, pick, delay, key, chain + 1), _stopping.Token);
         }
         catch (Exception ex)
         {
@@ -136,7 +156,13 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
         return e.PlayedToCompletion;
     }
 
-    private async Task PlayLater(string sessionId, Jellyfin.Database.Implementations.Entities.User user, UpNextPick pick, TimeSpan delay)
+    private async Task PlayLater(
+        string sessionId,
+        Jellyfin.Database.Implementations.Entities.User user,
+        UpNextPick pick,
+        TimeSpan delay,
+        (Guid UserId, string Device) chainKey,
+        int chainCount)
     {
         try
         {
@@ -161,6 +187,13 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
             }
 
             await UpNextController.SendPlay(_sessionManager, _userDataManager, session, user, pick.Next, _stopping.Token).ConfigureAwait(false);
+
+            if (_chains.Count > 1000)
+            {
+                _chains.Clear();
+            }
+
+            _chains[chainKey] = (pick.Next.Id, chainCount);
         }
         catch (OperationCanceledException)
         {

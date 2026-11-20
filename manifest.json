@@ -8,6 +8,14 @@
         "category":  "General",
         "versions":  [
                          {
+                             "version":  "1.1.0.0",
+                             "changelog":  "New: \u0027Are you still watching?\u0027 after 3 movies autoplay in a row (adjustable). New: series-aware suggestions start a series from its first unwatched part.",
+                             "targetAbi":  "10.11.0.0",
+                             "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.1.0.0/up-next_1.1.0.0.zip",
+                             "checksum":  "af44dfd22781fcdf8e0a2e927318964f",
+                             "timestamp":  "2026-11-20T12:02:22Z"
+                         },
+                         {
                              "version":  "1.0.1.0",
                              "changelog":  "Fixes the countdown restarting when you open Up Next settings from the card. Adds a plugin icon.",
                              "targetAbi":  "10.11.0.0",

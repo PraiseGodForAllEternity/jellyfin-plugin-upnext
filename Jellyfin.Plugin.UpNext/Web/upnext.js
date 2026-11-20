@@ -33,6 +33,8 @@
         leaving: false,
         handled: false,
         countdown: null,
+        autoChain: 0, // movies started by the countdown in a row, with nobody touching anything
+        asking: null, // id of the movie waiting behind "Are you still watching?"
         lastPos: 0,
         lastRuntime: 0
     };
@@ -121,7 +123,14 @@
                 onVideoEnded();
             }
             if (state.phase === 'card') {
+                var waiting = state.asking;
                 closeCard();
+                if (waiting) {
+                    // The credits ran out while we were asking; keep asking on the end screen.
+                    state.asking = waiting;
+                    openCard(true);
+                    showStillWatching(waiting);
+                }
             }
             if (state.phase === 'idle') {
                 state.itemId = null;
@@ -255,14 +264,14 @@
     function onVideoEnded() {
         var info = state.info;
         if (!info || info.ItemId !== state.itemId || !isActiveFor(info) ||
-            state.leaving || state.handled || state.phase === 'ended') {
+            state.leaving || state.handled || state.asking || state.phase === 'ended') {
             return;
         }
         state.lastPos = 0;
 
         if (state.phase === 'card' && info.Mode === 'Autoplay') {
             // Credits are over: no reason to keep waiting.
-            playItem(info.Next.Id);
+            autoPlay(info.Next.Id);
             return;
         }
 
@@ -301,7 +310,7 @@
 
         wireCard(root);
 
-        if (info.Mode === 'Autoplay') {
+        if (info.Mode === 'Autoplay' && !state.asking) {
             startCountdown(info.CountdownSeconds, info.Next.Id);
         }
 
@@ -429,7 +438,7 @@
             }
             if (left <= 0) {
                 stopCountdown();
-                playItem(nextId);
+                autoPlay(nextId);
             }
         }
 
@@ -457,6 +466,7 @@
         removeOverlay();
         document.documentElement.classList.remove('upnext-active');
         state.phase = 'idle';
+        state.asking = null;
     }
 
     function removeOverlay() {
@@ -501,6 +511,70 @@
         }
     }
 
+    // Starts the next movie because the countdown ran out (not because someone pressed
+    // anything). After too many of those in a row, ask first instead.
+    function autoPlay(id) {
+        var limit = state.info ? parseInt(state.info.StillWatchingAfter, 10) || 0 : 0;
+        if (limit > 0 && state.autoChain >= limit) {
+            showStillWatching(id);
+            return;
+        }
+        state.autoChain++;
+        playItem(id);
+    }
+
+    function showStillWatching(id) {
+        stopCountdown();
+        state.asking = id;
+        var overlay = document.getElementById('upnext-overlay');
+        if (!overlay) {
+            openCard(true);
+            overlay = document.getElementById('upnext-overlay');
+        }
+        if (!overlay || overlay.querySelector('.upnext-still')) {
+            return;
+        }
+
+        var next = state.info && state.info.Next ? state.info.Next.Name : 'The next movie';
+        var box = document.createElement('div');
+        box.className = 'upnext-still';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-label', 'Are you still watching?');
+        box.innerHTML = '<h2>Are you still watching?</h2>' +
+            '<p>' + escapeHtml(next) + ' is up next.</p>' +
+            '<div class="upnext-still-buttons">' +
+            '<button type="button" class="upnext-btn upnext-play upnext-focusable" data-still="continue"><span class="upnext-btn-text">Continue Watching</span></button>' +
+            '<button type="button" class="upnext-btn upnext-secondary upnext-focusable" data-still="browse"><span class="upnext-btn-text">Back to Browse</span></button>' +
+            '</div>';
+        box.addEventListener('click', function (e) {
+            var btn = e.target.closest ? e.target.closest('[data-still]') : null;
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            if (btn.getAttribute('data-still') === 'continue') {
+                var waiting = state.asking;
+                state.autoChain = 0;
+                playItem(waiting);
+            } else {
+                backToBrowse();
+            }
+        });
+        overlay.appendChild(box);
+        setTimeout(function () {
+            var first = box.querySelector('button');
+            if (first) {
+                first.focus();
+            }
+        }, 50);
+    }
+
+    // Any real input means someone is there, so the autoplay chain starts over.
+    function noteActivity() {
+        state.autoChain = 0;
+    }
+
     // ------------------------------------------------------ remote / keyboard
 
     // One listener on window (capture) so we see keys before jellyfin's own navigation.
@@ -515,6 +589,22 @@
             return;
         }
         var code = e.keyCode;
+        var still = overlay.querySelector('.upnext-still');
+        if (still) {
+            // Keep the remote inside the question until it's answered.
+            if (KEY_BACK.indexOf(code) !== -1) {
+                swallow(e);
+                backToBrowse();
+            } else if (code === KEY_ENTER) {
+                swallow(e);
+                var answer = still.contains(document.activeElement) ? document.activeElement : still.querySelector('button');
+                answer.click();
+            } else if (KEY_DIRS[code]) {
+                swallow(e);
+                moveFocus(still, KEY_DIRS[code]);
+            }
+            return;
+        }
         if (KEY_BACK.indexOf(code) !== -1) {
             if (code === 8 && /input|textarea/i.test((e.target && e.target.tagName) || '')) {
                 return;
@@ -847,6 +937,10 @@
             '.upnext-hint{color:#999;font-size:.9em}',
             '.upnext-dialog-buttons{display:flex;gap:.6em;flex-wrap:wrap;margin-top:1.2em}',
             '.upnext-dialog .upnext-play{background:#fff;color:#000}',
+            '.upnext-still{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:6;pointer-events:auto;background:rgba(18,18,18,.95);border-radius:12px;padding:1.8em 2.2em;text-align:center;max-width:90vw;box-shadow:0 12px 48px rgba(0,0,0,.7);animation:upnext-fade .3s ease both}',
+            '.upnext-still h2{margin:0 0 .4em;font-size:1.7em}',
+            '.upnext-still p{margin:0 0 1.3em;color:#ccc}',
+            '.upnext-still-buttons{display:flex;gap:.8em;justify-content:center;flex-wrap:wrap}',
             '.upnext-toast{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);z-index:1003;background:#323232;color:#fff;padding:.8em 1.4em;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.5)}',
             '@keyframes upnext-fade{from{opacity:0}to{opacity:1}}',
             '@keyframes upnext-rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}',
@@ -887,6 +981,11 @@
         document.head.appendChild(style);
     }
 
+    // Activity listeners go first: onKeyDown may stop the event for keys it handles.
+    var activityEvents = ['keydown', 'pointerdown', 'mousedown', 'touchstart', 'wheel'];
+    for (var a = 0; a < activityEvents.length; a++) {
+        window.addEventListener(activityEvents[a], noteActivity, true);
+    }
     window.addEventListener('keydown', onKeyDown, true);
     setInterval(tick, TICK_MS);
 })();

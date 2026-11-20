@@ -86,6 +86,9 @@ public class UpNextResponse
     /// <summary>Gets or sets how far before the end to show the card when no credits were detected.</summary>
     public int FallbackSecondsBeforeEnd { get; set; }
 
+    /// <summary>Gets or sets how many autoplays in a row are allowed before asking "Are you still watching?" (0 = never ask).</summary>
+    public int StillWatchingAfter { get; set; }
+
     /// <summary>Gets or sets the movie that will autoplay.</summary>
     public MovieCard? Next { get; set; }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0.0
+
+- New: "Are you still watching?" After 3 movies autoplay in a row with nobody touching anything (adjustable, or off), Up Next asks before starting the next one. On apps that can't show the question, such as Roku and Android TV, the server just doesn't start another.
+- New: series-aware suggestions. A suggestion that's part of a collection now offers the first part you haven't watched, instead of jumping into the middle.
+
 ## 1.0.1.0
 
 - Fixed: opening Up Next settings from the card restarted the countdown instead of pausing it.

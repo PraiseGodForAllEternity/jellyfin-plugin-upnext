@@ -19,10 +19,14 @@ Netflix-style "Up Next" for movies. When a movie reaches its credits, the video 
 - **Everything else:** a similar movie you haven't watched yet, matched on genre, studio, era and rating.
 - **On the card:** Play Now, Back to Browse, and a few other suggestions. Click the small video to go back to fullscreen and watch the credits.
 - **Per user:** everyone can turn autoplay on or off and pick their countdown length.
+- **"Are you still watching?"** After 3 movies autoplay in a row with nobody touching anything, Up Next asks before starting another, so a marathon doesn't run all night after everyone falls asleep.
+- **Series-aware suggestions:** if a suggestion is part of a series, you get the first part you haven't seen, never the middle of a trilogy.
 
 | Settings for each user | On a phone |
 |---|---|
 | ![Up Next settings dialog with autoplay, no-autoplay and off options](images/settings.jpg) | ![The Up Next card on a phone held sideways](images/phone.jpg) |
+| **Are you still watching?** | |
+| ![After several movies autoplay in a row, Up Next asks before starting another](images/still-watching.jpg) | |
 
 <sub>Screenshots use made-up demo movies.</sub>
 
@@ -62,6 +66,7 @@ The Up Next screen runs inside Jellyfin's web player, so apps with their own nat
 - Default mode: autoplay, show Up Next without autoplay, or off
 - Countdown length (default 20 seconds)
 - How early to show Up Next when no credits were detected
+- How many movies can autoplay in a row before asking "Are you still watching?" (default 3, 0 = never ask)
 - How many other suggestions to show
 - Skip already-watched movies when continuing a collection
 - Turn the web screen or the server-side autoplay on or off

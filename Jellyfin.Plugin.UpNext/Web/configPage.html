@@ -38,6 +38,12 @@
                     </div>
 
                     <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="StillWatchingAfter">Ask "Are you still watching?" after this many movies autoplay in a row</label>
+                        <input id="StillWatchingAfter" name="StillWatchingAfter" type="number" is="emby-input" min="0" max="20" />
+                        <div class="fieldDescription">Counts only movies that started by themselves, with nobody pressing anything. 0 never asks. Apps that can't show the question (Roku, Android TV, etc.) simply stop.</div>
+                    </div>
+
+                    <div class="inputContainer">
                         <label class="inputLabel inputLabelUnfocused" for="SuggestionCount">Other suggestions to show</label>
                         <input id="SuggestionCount" name="SuggestionCount" type="number" is="emby-input" min="0" max="6" />
                     </div>
@@ -95,7 +101,7 @@
                 var pluginId = 'c592bf50-4d3e-427a-934c-5d9d38208e03';
                 var page = document.querySelector('#UpNextConfigPage');
                 var form = document.querySelector('#UpNextConfigForm');
-                var numbers = ['DefaultCountdownSeconds', 'FallbackSecondsBeforeEnd', 'SuggestionCount', 'RemoteAutoplayDelaySeconds'];
+                var numbers = ['DefaultCountdownSeconds', 'FallbackSecondsBeforeEnd', 'StillWatchingAfter', 'SuggestionCount', 'RemoteAutoplayDelaySeconds'];
                 var checks = ['SkipWatchedInCollections', 'EnableWebOverlay', 'EnableRemoteAutoplay'];
                 var modeNames = { Autoplay: 'Autoplay', SuggestionsOnly: 'Up Next, no autoplay', Off: 'Off' };
                 var modeOrder = ['Autoplay', 'SuggestionsOnly', 'Off'];

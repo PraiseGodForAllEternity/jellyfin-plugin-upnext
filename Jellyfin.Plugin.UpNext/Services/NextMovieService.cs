@@ -64,10 +64,11 @@ public class NextMovieService
         // Other parts of the same series make poor "more like this" picks
         // (nobody wants Part Three suggested right after Part One).
         var exclude = new HashSet<Guid> { current.Id };
+        var boxSets = LoadCollections(user);
 
         try
         {
-            foreach (var boxSet in FindCollections(user, current))
+            foreach (var boxSet in FindCollections(boxSets, current))
             {
                 var films = OrderedFilms(user, boxSet);
                 var index = films.FindIndex(m => m.Id.Equals(current.Id));
@@ -100,7 +101,7 @@ public class NextMovieService
             exclude.Add(next.Id);
         }
 
-        var similar = FindSimilar(user, current, exclude, suggestionCount + 1);
+        var similar = FindSimilar(user, current, exclude, suggestionCount + 1, boxSets);
         if (next is null)
         {
             next = similar.FirstOrDefault();
@@ -115,20 +116,61 @@ public class NextMovieService
         return new UpNextPick(next, collectionName, similar.Take(Math.Max(0, suggestionCount)).ToList());
     }
 
-    private IEnumerable<BoxSet> FindCollections(User user, BaseItem current)
+    private List<BoxSet> LoadCollections(User user)
     {
-        var query = new InternalItemsQuery(user)
+        try
         {
-            IncludeItemTypes = new[] { BaseItemKind.BoxSet },
-            Recursive = true,
-            DtoOptions = new DtoOptions(false)
-        };
+            var query = new InternalItemsQuery(user)
+            {
+                IncludeItemTypes = new[] { BaseItemKind.BoxSet },
+                Recursive = true,
+                DtoOptions = new DtoOptions(false)
+            };
 
-        return _libraryManager.GetItemList(query)
-            .OfType<BoxSet>()
-            .Where(b => (b.LinkedChildren ?? Array.Empty<LinkedChild>()).Any(c => Links(c, current)))
+            return _libraryManager.GetItemList(query).OfType<BoxSet>().ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Up Next: couldn't list collections");
+            return new List<BoxSet>();
+        }
+    }
+
+    private static IEnumerable<BoxSet> FindCollections(IReadOnlyList<BoxSet> boxSets, BaseItem movie)
+    {
+        return boxSets
+            .Where(b => (b.LinkedChildren ?? Array.Empty<LinkedChild>()).Any(c => Links(c, movie)))
             // Prefer smaller collections: a trilogy beats a 40-film "Marvel" list.
             .OrderBy(b => b.LinkedChildren?.Length ?? 0);
+    }
+
+    /// <summary>
+    /// For a movie that's part of a series, the part the viewer should actually start
+    /// with: the earliest one they haven't watched. Standalone movies come back unchanged.
+    /// </summary>
+    private BaseItem SeriesEntryPoint(User user, BaseItem movie, IReadOnlyList<BoxSet> boxSets, Dictionary<Guid, List<BaseItem>> filmsCache)
+    {
+        try
+        {
+            var boxSet = FindCollections(boxSets, movie).FirstOrDefault();
+            if (boxSet is null)
+            {
+                return movie;
+            }
+
+            if (!filmsCache.TryGetValue(boxSet.Id, out var films))
+            {
+                films = OrderedFilms(user, boxSet);
+                filmsCache[boxSet.Id] = films;
+            }
+
+            return films.FirstOrDefault(f => !IsPlayed(user, f)) ?? movie;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Up Next: couldn't check the series for {Name}", movie.Name);
+            return movie;
+        }
     }
 
     // Collections store their members by item id, library id or file path,
@@ -179,26 +221,57 @@ public class NextMovieService
         return item.ProductionYear.HasValue ? new DateTime(item.ProductionYear.Value, 1, 1) : DateTime.MaxValue;
     }
 
-    private List<BaseItem> FindSimilar(User user, BaseItem current, HashSet<Guid> exclude, int count)
+    private List<BaseItem> FindSimilar(User user, BaseItem current, HashSet<Guid> exclude, int count, IReadOnlyList<BoxSet> boxSets)
     {
-        var candidates = new List<BaseItem>();
-        if (current.Genres.Length > 0)
+        var picked = new List<BaseItem>();
+        if (count <= 0)
         {
-            candidates.AddRange(QueryUnwatched(user, exclude, 80, current.Genres));
+            return picked;
         }
 
-        var picked = candidates
-            .Where(c => !exclude.Contains(c.Id))
-            .OrderByDescending(c => Similarity(current, c))
-            .Take(count)
-            .ToList();
+        var seen = new HashSet<Guid>(exclude);
+        var filmsCache = new Dictionary<Guid, List<BaseItem>>();
+
+        // Suggest a series from its first unwatched part, never from the middle.
+        void Offer(BaseItem candidate)
+        {
+            var entry = SeriesEntryPoint(user, candidate, boxSets, filmsCache);
+            var isNew = seen.Add(entry.Id);
+            seen.Add(candidate.Id);
+            if (isNew)
+            {
+                picked.Add(entry);
+            }
+        }
+
+        if (current.Genres.Length > 0)
+        {
+            var ranked = QueryUnwatched(user, exclude, 80, current.Genres)
+                .Where(c => !exclude.Contains(c.Id))
+                .OrderByDescending(c => Similarity(current, c));
+            foreach (var candidate in ranked)
+            {
+                if (picked.Count >= count)
+                {
+                    break;
+                }
+
+                Offer(candidate);
+            }
+        }
 
         if (picked.Count < count)
         {
             // Not enough genre matches: top up with any unwatched movie.
-            var skip = new HashSet<Guid>(exclude);
-            skip.UnionWith(picked.Select(p => p.Id));
-            picked.AddRange(QueryUnwatched(user, skip, count - picked.Count, null));
+            foreach (var candidate in QueryUnwatched(user, seen, (count - picked.Count) * 3, null))
+            {
+                if (picked.Count >= count)
+                {
+                    break;
+                }
+
+                Offer(candidate);
+            }
         }
 
         return picked;
