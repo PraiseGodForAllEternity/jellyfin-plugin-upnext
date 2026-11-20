@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Jellyfin.Data.Enums;
 using Jellyfin.Database.Implementations.Entities;
@@ -94,12 +95,13 @@ public class NextMovieService
         // (nobody wants Part Three suggested right after Part One).
         var exclude = new HashSet<Guid> { current.Id };
         var boxSets = LoadCollections(user);
+        var seriesCache = new Dictionary<string, List<BaseItem>>(StringComparer.Ordinal);
+        var fromSeries = false;
 
         try
         {
-            foreach (var boxSet in FindCollections(boxSets, current))
+            foreach (var (name, films) in FilmSeries(user, current, boxSets, seriesCache))
             {
-                var films = OrderedFilms(user, boxSet);
                 var index = films.FindIndex(m => m.Id.Equals(current.Id));
                 if (index < 0)
                 {
@@ -114,7 +116,8 @@ public class NextMovieService
                 next = films.Skip(index + 1).FirstOrDefault(m => !config.SkipWatchedInCollections || !IsPlayed(user, m));
                 if (next is not null)
                 {
-                    collectionName = boxSet.Name;
+                    fromSeries = true;
+                    collectionName = name;
                     break;
                 }
             }
@@ -144,7 +147,7 @@ public class NextMovieService
 
         return new UpNextPick(
             new Suggestion(next, next),
-            collectionName is null ? PickContext.Similar : PickContext.Collection,
+            fromSeries ? PickContext.Collection : PickContext.Similar,
             collectionName,
             similar.Take(Math.Max(0, suggestionCount)).Select(m => new Suggestion(m, m)).ToList());
     }
@@ -347,26 +350,103 @@ public class NextMovieService
     }
 
     /// <summary>
+    /// The film series a movie belongs to, each as (name, films in release order).
+    /// First any Jellyfin collections it's in (made by hand, or automatically when the
+    /// library's "Automatically add to collection" option is on), then the TMDb series
+    /// recorded in its metadata, which works even when no collection exists.
+    /// </summary>
+    private IEnumerable<(string? Name, List<BaseItem> Films)> FilmSeries(
+        User user,
+        BaseItem movie,
+        IReadOnlyList<BoxSet> boxSets,
+        Dictionary<string, List<BaseItem>> cache)
+    {
+        foreach (var boxSet in FindCollections(boxSets, movie))
+        {
+            var key = "box:" + boxSet.Id.ToString("N", CultureInfo.InvariantCulture);
+            if (!cache.TryGetValue(key, out var films))
+            {
+                films = OrderedFilms(user, boxSet);
+                cache[key] = films;
+            }
+
+            yield return (boxSet.Name, films);
+        }
+
+        // Items from search results may come without provider ids; the full record has them.
+        var full = movie.GetProviderId(MetadataProvider.TmdbCollection) is { Length: > 0 }
+            ? movie
+            : _libraryManager.GetItemById(movie.Id) ?? movie;
+        var tmdbId = full.GetProviderId(MetadataProvider.TmdbCollection);
+        if (!string.IsNullOrWhiteSpace(tmdbId))
+        {
+            var key = "tmdb:" + tmdbId;
+            if (!cache.TryGetValue(key, out var films))
+            {
+                films = TmdbSeriesFilms(user, tmdbId);
+                cache[key] = films;
+            }
+
+            // A one-film "series" is just a standalone movie.
+            if (films.Count > 1)
+            {
+                yield return ((full as Movie)?.CollectionName, films);
+            }
+        }
+    }
+
+    private List<BaseItem> TmdbSeriesFilms(User user, string tmdbCollectionId)
+    {
+        var key = MetadataProvider.TmdbCollection.ToString();
+        var query = new InternalItemsQuery(user)
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Movie },
+            Recursive = true,
+            HasAnyProviderId = new Dictionary<string, string> { [key] = tmdbCollectionId },
+            DtoOptions = new DtoOptions(false)
+        };
+
+        var matches = _libraryManager.GetItemList(query);
+
+        // Safety net in case the database ever ignores the filter: no real film series is
+        // this big, so treat it as "no series" rather than one giant one.
+        if (matches.Count > 50)
+        {
+            _logger.LogWarning("Up Next: TMDb series {Id} matched {Count} movies; ignoring it", tmdbCollectionId, matches.Count);
+            return new List<BaseItem>();
+        }
+
+        // Search results don't always carry provider ids, so only reject a film whose id
+        // is known and different.
+        return matches
+            .OfType<Movie>()
+            .Where(m => m.IsVisible(user)
+                && (m.GetProviderId(MetadataProvider.TmdbCollection) is not { Length: > 0 } id
+                    || string.Equals(id, tmdbCollectionId, StringComparison.Ordinal)))
+            .GroupBy(m => m.Id)
+            .Select(g => (BaseItem)g.First())
+            .OrderBy(ReleaseDate)
+            .ThenBy(m => m.SortName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
     /// For a movie that's part of a series, the part the viewer should actually start
     /// with: the earliest one they haven't watched. Standalone movies come back unchanged.
     /// </summary>
-    private BaseItem SeriesEntryPoint(User user, BaseItem movie, IReadOnlyList<BoxSet> boxSets, Dictionary<Guid, List<BaseItem>> filmsCache)
+    private BaseItem SeriesEntryPoint(User user, BaseItem movie, IReadOnlyList<BoxSet> boxSets, Dictionary<string, List<BaseItem>> filmsCache)
     {
         try
         {
-            var boxSet = FindCollections(boxSets, movie).FirstOrDefault();
-            if (boxSet is null)
+            foreach (var (_, films) in FilmSeries(user, movie, boxSets, filmsCache))
             {
-                return movie;
+                if (films.Any(f => f.Id.Equals(movie.Id)))
+                {
+                    return films.FirstOrDefault(f => !IsPlayed(user, f)) ?? movie;
+                }
             }
 
-            if (!filmsCache.TryGetValue(boxSet.Id, out var films))
-            {
-                films = OrderedFilms(user, boxSet);
-                filmsCache[boxSet.Id] = films;
-            }
-
-            return films.FirstOrDefault(f => !IsPlayed(user, f)) ?? movie;
+            return movie;
         }
         catch (Exception ex)
         {
@@ -432,7 +512,7 @@ public class NextMovieService
         }
 
         var seen = new HashSet<Guid>(exclude);
-        var filmsCache = new Dictionary<Guid, List<BaseItem>>();
+        var filmsCache = new Dictionary<string, List<BaseItem>>(StringComparer.Ordinal);
 
         // Suggest a series from its first unwatched part, never from the middle.
         void Offer(BaseItem candidate)

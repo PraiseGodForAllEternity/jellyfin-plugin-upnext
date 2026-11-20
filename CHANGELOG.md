@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0.0
+
+- New: film series work without any Jellyfin collections. Up Next now also uses the TMDb series recorded in each movie's metadata, which Jellyfin stores even when "Automatically add to collection" is off (the default). So Resident Evil → Apocalypse → Extinction → … plays in order on a stock setup. Collections still come first when they exist.
+- Changed: the default countdown is now 30 seconds. Existing installs keep whatever is saved; change it under Dashboard → Plugins → Up Next.
+
 ## 1.2.1.0
 
 - Fixed: with more than 200 shows, similar-show picks only came from the first 200 alphabetically. Now a random sample of matching genres is ranked, like movies.

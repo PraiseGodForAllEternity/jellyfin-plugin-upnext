@@ -342,7 +342,7 @@
         var source = escapeHtml(info.SourceName || info.CollectionName || '');
         switch (info.Context) {
             case 'Collection':
-                return 'Next in ' + source;
+                return source ? 'Next in ' + source : 'Next in the series';
             case 'SeriesFinale':
                 return 'You finished ' + source + ' &middot; Up next';
             case 'CaughtUp':
@@ -724,7 +724,7 @@
 
     function renderSettings(prefs) {
         removeSettingsDialog();
-        prefs = prefs || { Mode: 'Autoplay', CountdownSeconds: 20, UsesDefaultMode: true, UsesDefaultCountdown: true, DefaultMode: 'Autoplay', DefaultCountdownSeconds: 20 };
+        prefs = prefs || { Mode: 'Autoplay', CountdownSeconds: 30, UsesDefaultMode: true, UsesDefaultCountdown: true, DefaultMode: 'Autoplay', DefaultCountdownSeconds: 30 };
 
         var modes = [
             ['Autoplay', 'Autoplay with countdown', 'Shrinks the movie at the credits and starts the next one.'],
@@ -732,7 +732,7 @@
             ['Off', 'Off', 'Movies end normally.']
         ];
         var counts = [5, 10, 15, 20, 30, 45, 60];
-        var currentCount = parseInt(prefs.CountdownSeconds, 10) || 20;
+        var currentCount = parseInt(prefs.CountdownSeconds, 10) || 30;
         if (counts.indexOf(currentCount) === -1) {
             // Admin may have set a value that isn't in the list; keep it selectable.
             counts.push(currentCount);
@@ -755,7 +755,7 @@
         html += '</select>';
         var defaultName = { Autoplay: 'Autoplay', SuggestionsOnly: 'Show Up Next, no autoplay', Off: 'Off' }[prefs.DefaultMode] || 'Autoplay';
         html += '<p class="upnext-hint">Server default: ' + defaultName +
-            ', ' + (parseInt(prefs.DefaultCountdownSeconds, 10) || 20) + ' seconds.</p>';
+            ', ' + (parseInt(prefs.DefaultCountdownSeconds, 10) || 30) + ' seconds.</p>';
         html += '<div class="upnext-dialog-buttons">';
         html += '<button type="button" class="upnext-btn upnext-play upnext-sfocus" data-do="save"><span class="upnext-btn-text">Save</span></button>';
         html += '<button type="button" class="upnext-btn upnext-secondary upnext-sfocus" data-do="reset"><span class="upnext-btn-text">Use defaults</span></button>';

@@ -15,7 +15,7 @@ Netflix-style "Up Next" for movies, and for when a TV show runs out of episodes.
 
 ![The Up Next card: the finished movie shrinks to the corner while the next film in the collection counts down](images/up-next-card.jpg)
 
-- **Trilogies and collections:** the next movie in the collection, in release order (*Fellowship* → *Two Towers* → *Return of the King*).
+- **Trilogies and film series:** the next movie in the series, in release order (*Fellowship* → *Two Towers* → *Return of the King*). Works out of the box; see [how it knows](#how-it-knows-what-comes-next).
 - **Everything else:** a similar movie you haven't watched yet, matched on genre, studio, era and rating.
 - **On the card:** Play Now, Back to Browse, and a few other suggestions. Click the small video to go back to fullscreen and watch the credits.
 - **Per user:** everyone can turn autoplay on or off and pick their countdown length.
@@ -38,6 +38,17 @@ A show counts as ended only when its metadata says so. Unknown status is treated
 | ![After several movies autoplay in a row, Up Next asks before starting another](images/still-watching.jpg) | ![After the last episode of a show, the next show counts down](images/series-finale.jpg) |
 
 <sub>Screenshots use made-up demo movies and shows.</sub>
+
+## How it knows what comes next
+
+When a movie ends, Up Next looks for the film series it belongs to, in this order:
+
+1. **Jellyfin collections** it's in, whether you made them yourself or Jellyfin made them because the library's *Automatically add to collection* option is on. Your own collections win, so you can fix an odd series by grouping it yourself.
+2. **The TMDb film series** stored in the movie's metadata. Jellyfin records this for every movie it identifies, even when that option is off (and it's off by default), so a library with no collections at all still works.
+
+The films are then sorted by release date, and the next one you haven't reached plays. For example, with Resident Evil (2002) through The Final Chapter (2016), each film leads to the next. If a movie is in more than one series, the smallest one wins: a trilogy beats a 30-film franchise collection.
+
+If the movie isn't part of a series, or it's the last one, Up Next picks a similar movie you haven't watched. If that pick is part of a series, it starts from the first part you haven't seen.
 
 ## Requirements
 
@@ -73,7 +84,7 @@ The Up Next screen runs inside Jellyfin's web player, so apps with their own nat
 **Admins:** Dashboard → Plugins → Up Next
 
 - Default mode: autoplay, show Up Next without autoplay, or off
-- Countdown length (default 20 seconds)
+- Countdown length (default 30 seconds)
 - How early to show Up Next when no credits were detected
 - How many movies can autoplay in a row before asking "Are you still watching?" (default 3, 0 = never ask)
 - How many other suggestions to show

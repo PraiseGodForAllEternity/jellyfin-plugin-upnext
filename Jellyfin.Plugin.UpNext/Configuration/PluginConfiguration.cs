@@ -28,7 +28,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public UpNextMode DefaultMode { get; set; } = UpNextMode.Autoplay;
 
     /// <summary>Gets or sets the default countdown length in seconds.</summary>
-    public int DefaultCountdownSeconds { get; set; } = 20;
+    public int DefaultCountdownSeconds { get; set; } = 30;
 
     /// <summary>
     /// Gets or sets how many seconds before the end the card appears when
