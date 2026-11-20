@@ -1,11 +1,30 @@
+<p align="center">
+  <img src="images/logo.png" alt="Up Next" width="640">
+</p>
+
+<p align="center">
+  <a href="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/PraiseGodForAllEternity/jellyfin-plugin-upnext?label=release"></a>
+  <img alt="Jellyfin 10.11" src="https://img.shields.io/badge/Jellyfin-10.11-7b5cd6">
+  <a href="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/actions/workflows/build.yml"><img alt="Build" src="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/actions/workflows/build.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/github/license/PraiseGodForAllEternity/jellyfin-plugin-upnext"></a>
+</p>
+
 # Up Next for Jellyfin
 
 Netflix-style "Up Next" for movies. When a movie reaches its credits, the video shrinks to the top-left corner and a card counts down to the next film.
+
+![The Up Next card: the finished movie shrinks to the corner while the next film in the collection counts down](images/up-next-card.jpg)
 
 - **Trilogies and collections:** the next movie in the collection, in release order (*Fellowship* → *Two Towers* → *Return of the King*).
 - **Everything else:** a similar movie you haven't watched yet, matched on genre, studio, era and rating.
 - **On the card:** Play Now, Back to Browse, and a few other suggestions. Click the small video to go back to fullscreen and watch the credits.
 - **Per user:** everyone can turn autoplay on or off and pick their countdown length.
+
+| Settings for each user | On a phone |
+|---|---|
+| ![Up Next settings dialog with autoplay, no-autoplay and off options](images/settings.jpg) | ![The Up Next card on a phone held sideways](images/phone.jpg) |
+
+<sub>Screenshots use made-up demo movies.</sub>
 
 ## Requirements
 

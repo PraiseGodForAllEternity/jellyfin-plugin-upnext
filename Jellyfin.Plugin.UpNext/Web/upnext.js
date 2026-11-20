@@ -599,7 +599,7 @@
     }
 
     function renderSettings(prefs) {
-        closeSettings();
+        removeSettingsDialog();
         prefs = prefs || { Mode: 'Autoplay', CountdownSeconds: 20, UsesDefaultMode: true, UsesDefaultCountdown: true, DefaultMode: 'Autoplay', DefaultCountdownSeconds: 20 };
 
         var modes = [
@@ -727,11 +727,15 @@
         });
     }
 
-    function closeSettings() {
+    function removeSettingsDialog() {
         var el = document.getElementById('upnext-settings');
         if (el && el.parentNode) {
             el.parentNode.removeChild(el);
         }
+    }
+
+    function closeSettings() {
+        removeSettingsDialog();
         var play = document.querySelector('#upnext-overlay .upnext-play');
         if (play) {
             play.focus();
