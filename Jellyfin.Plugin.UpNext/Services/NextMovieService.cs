@@ -118,9 +118,9 @@ public class NextMovieService
 
         return _libraryManager.GetItemList(query)
             .OfType<BoxSet>()
-            .Where(b => b.LinkedChildren.Any(c => c.ItemId.HasValue && c.ItemId.Value.Equals(current.Id)))
+            .Where(b => (b.LinkedChildren ?? Array.Empty<LinkedChild>()).Any(c => c is not null && c.ItemId.HasValue && c.ItemId.Value.Equals(current.Id)))
             // Prefer smaller collections: a trilogy beats a 40-film "Marvel" list.
-            .OrderBy(b => b.LinkedChildren.Length);
+            .OrderBy(b => b.LinkedChildren?.Length ?? 0);
     }
 
     private static List<BaseItem> OrderedFilms(User user, BoxSet boxSet)

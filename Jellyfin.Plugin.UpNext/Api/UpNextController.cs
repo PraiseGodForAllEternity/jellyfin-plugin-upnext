@@ -161,7 +161,7 @@ public class UpNextController : ControllerBase
         var user = await GetCallerUser().ConfigureAwait(false);
         if (user is null)
         {
-            return Unauthorized();
+            return NotFound();
         }
 
         var item = _libraryManager.GetItemById(itemId);
@@ -209,12 +209,11 @@ public class UpNextController : ControllerBase
     public async Task<ActionResult> Claim([FromRoute] Guid itemId)
     {
         var auth = await _authContext.GetAuthorizationInfo(HttpContext).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(auth.DeviceId))
+        if (auth.UserId.Equals(Guid.Empty) || !_claims.Claim(auth.UserId, auth.DeviceId, itemId))
         {
             return BadRequest();
         }
 
-        _claims.Claim(auth.DeviceId, itemId);
         return NoContent();
     }
 
@@ -234,13 +233,28 @@ public class UpNextController : ControllerBase
             return NotFound();
         }
 
+        // Movies only: this endpoint exists for Up Next, not as a general remote control.
         var item = _libraryManager.GetItemById(itemId);
-        if (item is null || !item.IsVisible(user))
+        if (item is not Movie || !item.IsVisible(user))
         {
             return NotFound();
         }
 
-        await SendPlay(_sessionManager, _userDataManager, session, user, item, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await SendPlay(_sessionManager, _userDataManager, session, user, item, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ArgumentException)
+        {
+            // Thrown when the user isn't allowed to play this item.
+            return Forbid();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Up Next: couldn't start {Name} on {Client}", item.Name, session.Client);
+            return Conflict();
+        }
+
         return NoContent();
     }
 
@@ -259,11 +273,20 @@ public class UpNextController : ControllerBase
             return NotFound();
         }
 
-        await _sessionManager.SendPlaystateCommand(
-            session.Id,
-            session.Id,
-            new PlaystateRequest { Command = PlaystateCommand.Stop, ControllingUserId = user.Id.ToString("N") },
-            cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _sessionManager.SendPlaystateCommand(
+                session.Id,
+                session.Id,
+                new PlaystateRequest { Command = PlaystateCommand.Stop, ControllingUserId = user.Id.ToString("N") },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Up Next: couldn't stop playback on {Client}", session.Client);
+            return Conflict();
+        }
+
         return NoContent();
     }
 
@@ -278,7 +301,7 @@ public class UpNextController : ControllerBase
         var user = await GetCallerUser().ConfigureAwait(false);
         if (user is null)
         {
-            return Unauthorized();
+            return NotFound();
         }
 
         return ToDto(_preferences.Get(user.Id));
@@ -296,13 +319,14 @@ public class UpNextController : ControllerBase
         var user = await GetCallerUser().ConfigureAwait(false);
         if (user is null)
         {
-            return Unauthorized();
+            return NotFound();
         }
 
         UpNextMode? mode = null;
         if (!string.IsNullOrEmpty(body.Mode))
         {
-            if (!Enum.TryParse<UpNextMode>(body.Mode, true, out var parsed))
+            // TryParse also accepts any number ("42"), so check it's a real mode.
+            if (!Enum.TryParse<UpNextMode>(body.Mode, true, out var parsed) || !Enum.IsDefined(parsed))
             {
                 return BadRequest("Unknown mode.");
             }

@@ -32,7 +32,9 @@
         dismissed: null, // item id the viewer waved off (Watch Credits / Back)
         leaving: false,
         handled: false,
-        countdown: null
+        countdown: null,
+        lastPos: 0,
+        lastRuntime: 0
     };
 
     // ---------------------------------------------------------------- helpers
@@ -76,6 +78,14 @@
             .replace(/'/g, '&#39;');
     }
 
+    // A background-image declaration that's safe inside a double-quoted style attribute.
+    function bgStyle(url) {
+        var safe = String(url || '').replace(/["'\\\n\r()]/g, function (c) {
+            return '\\' + c.charCodeAt(0).toString(16) + ' ';
+        });
+        return escapeHtml('background-image:url("' + safe + '")');
+    }
+
     function formatRuntime(ticks) {
         if (!ticks) {
             return '';
@@ -106,12 +116,18 @@
         }
 
         if (!video) {
+            // Some players tear down the video at the end without firing "ended".
+            if (state.itemId && state.phase !== 'ended' && state.lastRuntime && state.lastPos >= state.lastRuntime - 5) {
+                onVideoEnded();
+            }
             if (state.phase === 'card') {
                 closeCard();
             }
             if (state.phase === 'idle') {
                 state.itemId = null;
                 state.info = null;
+                state.lastPos = 0;
+                state.lastRuntime = 0;
             }
             return;
         }
@@ -128,10 +144,14 @@
         if (!runtime || pos == null) {
             return;
         }
+        state.lastPos = pos;
+        state.lastRuntime = runtime;
 
         var triggerAt = info.CreditsStartTicks
             ? info.CreditsStartTicks / TICKS
             : runtime - info.FallbackSecondsBeforeEnd;
+        // Never pop up in the first half, even for short videos or odd settings.
+        triggerAt = Math.max(triggerAt, runtime / 2);
 
         if (state.phase === 'idle') {
             if (pos >= triggerAt && pos < runtime - 1 && state.dismissed !== state.itemId && !state.handled) {
@@ -194,6 +214,8 @@
         state.dismissed = null;
         state.leaving = false;
         state.handled = false;
+        state.lastPos = 0;
+        state.lastRuntime = 0;
 
         if (!id || (state.session && state.session.QueueHasNext)) {
             return;
@@ -232,9 +254,11 @@
 
     function onVideoEnded() {
         var info = state.info;
-        if (!info || info.ItemId !== state.itemId || !isActiveFor(info) || state.leaving || state.handled) {
+        if (!info || info.ItemId !== state.itemId || !isActiveFor(info) ||
+            state.leaving || state.handled || state.phase === 'ended') {
             return;
         }
+        state.lastPos = 0;
 
         if (state.phase === 'card' && info.Mode === 'Autoplay') {
             // Credits are over: no reason to keep waiting.
@@ -294,7 +318,7 @@
         var backdrop = imageUrl(next.Id, next.HasBackdrop ? 'Backdrop' : 'Primary', 1920);
         var meta = [];
         if (next.Year) {
-            meta.push(next.Year);
+            meta.push(escapeHtml(next.Year));
         }
         if (next.OfficialRating) {
             meta.push('<span class="upnext-rating">' + escapeHtml(next.OfficialRating) + '</span>');
@@ -308,12 +332,12 @@
             : 'Up Next';
 
         var title = next.HasLogo
-            ? '<img class="upnext-logo" alt="' + escapeHtml(next.Name) + '" src="' + imageUrl(next.Id, 'Logo', 600) + '">'
+            ? '<img class="upnext-logo" alt="' + escapeHtml(next.Name) + '" src="' + escapeHtml(imageUrl(next.Id, 'Logo', 600)) + '">'
             : '<h2 class="upnext-title">' + escapeHtml(next.Name) + '</h2>';
 
         var playLabel = info.Mode === 'Autoplay' ? 'Play Now' : 'Play';
 
-        var bg = '<div class="upnext-backdrop' + (ended ? ' upnext-still' : '') + '" style="background-image:url(\'' + backdrop + '\')"></div>' +
+        var bg = '<div class="upnext-backdrop' + (ended ? ' upnext-still' : '') + '" style="' + bgStyle(backdrop) + '"></div>' +
             '<div class="upnext-shade"></div>';
 
         var html = '';
@@ -336,7 +360,7 @@
             html += '<p class="upnext-overview">' + escapeHtml(next.Overview) + '</p>';
         }
         html += '<div class="upnext-buttons">';
-        html += '<button type="button" class="upnext-btn upnext-play upnext-focusable" data-action="play" data-id="' + next.Id + '">' +
+        html += '<button type="button" class="upnext-btn upnext-play upnext-focusable" data-action="play" data-id="' + escapeHtml(next.Id) + '">' +
             '<span class="upnext-fill"></span>' +
             '<span class="upnext-btn-text"><span class="material-icons play_arrow" aria-hidden="true"></span>' +
             playLabel + '<span class="upnext-count"></span></span></button>';
@@ -350,9 +374,9 @@
             for (var i = 0; i < info.Suggestions.length; i++) {
                 var s = info.Suggestions[i];
                 var thumb = imageUrl(s.Id, s.HasBackdrop ? 'Backdrop' : 'Primary', 480);
-                html += '<button type="button" class="upnext-tile upnext-focusable" data-action="play" data-id="' + s.Id + '" title="' + escapeHtml(s.Name) + '">' +
-                    '<span class="upnext-tile-img" style="background-image:url(\'' + thumb + '\')"></span>' +
-                    '<span class="upnext-tile-name">' + escapeHtml(s.Name) + (s.Year ? ' <span class="upnext-tile-year">' + s.Year + '</span>' : '') + '</span>' +
+                html += '<button type="button" class="upnext-tile upnext-focusable" data-action="play" data-id="' + escapeHtml(s.Id) + '" title="' + escapeHtml(s.Name) + '">' +
+                    '<span class="upnext-tile-img" style="' + bgStyle(thumb) + '"></span>' +
+                    '<span class="upnext-tile-name">' + escapeHtml(s.Name) + (s.Year ? ' <span class="upnext-tile-year">' + escapeHtml(s.Year) + '</span>' : '') + '</span>' +
                     '</button>';
             }
             html += '</div></div>';
@@ -584,6 +608,12 @@
             ['Off', 'Off', 'Movies end normally.']
         ];
         var counts = [5, 10, 15, 20, 30, 45, 60];
+        var currentCount = parseInt(prefs.CountdownSeconds, 10) || 20;
+        if (counts.indexOf(currentCount) === -1) {
+            // Admin may have set a value that isn't in the list; keep it selectable.
+            counts.push(currentCount);
+            counts.sort(function (a, b) { return a - b; });
+        }
 
         var html = '<div class="upnext-dialog" role="dialog" aria-modal="true" aria-label="Up Next settings">';
         html += '<h2>Up Next</h2>';
@@ -596,11 +626,12 @@
         html += '<label class="upnext-field-label" for="upnext-count">Countdown</label>';
         html += '<select id="upnext-count" class="upnext-select upnext-sfocus">';
         for (var c = 0; c < counts.length; c++) {
-            html += '<option value="' + counts[c] + '"' + (counts[c] === prefs.CountdownSeconds ? ' selected' : '') + '>' + counts[c] + ' seconds</option>';
+            html += '<option value="' + counts[c] + '"' + (counts[c] === currentCount ? ' selected' : '') + '>' + counts[c] + ' seconds</option>';
         }
         html += '</select>';
-        html += '<p class="upnext-hint">Server default: ' + (prefs.DefaultMode === 'SuggestionsOnly' ? 'Show Up Next, no autoplay' : prefs.DefaultMode) +
-            ', ' + prefs.DefaultCountdownSeconds + ' seconds.</p>';
+        var defaultName = { Autoplay: 'Autoplay', SuggestionsOnly: 'Show Up Next, no autoplay', Off: 'Off' }[prefs.DefaultMode] || 'Autoplay';
+        html += '<p class="upnext-hint">Server default: ' + defaultName +
+            ', ' + (parseInt(prefs.DefaultCountdownSeconds, 10) || 20) + ' seconds.</p>';
         html += '<div class="upnext-dialog-buttons">';
         html += '<button type="button" class="upnext-btn upnext-play upnext-sfocus" data-do="save"><span class="upnext-btn-text">Save</span></button>';
         html += '<button type="button" class="upnext-btn upnext-secondary upnext-sfocus" data-do="reset"><span class="upnext-btn-text">Use defaults</span></button>';
@@ -682,7 +713,6 @@
 
     function saveSettings(body) {
         request('POST', 'Preferences', body).then(function (prefs) {
-            closeSettings();
             if (state.info) {
                 state.info.Mode = prefs.Mode;
                 state.info.CountdownSeconds = prefs.CountdownSeconds;
@@ -690,6 +720,7 @@
             if (state.phase !== 'idle' && prefs.Mode === 'Off') {
                 closeCard();
             }
+            closeSettings();
             toast('Up Next settings saved');
         }, function () {
             toast('Couldn\'t save Up Next settings');
@@ -704,6 +735,11 @@
         var play = document.querySelector('#upnext-overlay .upnext-play');
         if (play) {
             play.focus();
+            // Opening settings paused the countdown; pick it back up.
+            var info = state.info;
+            if (info && info.Next && info.Mode === 'Autoplay' && !state.countdown && state.phase !== 'idle') {
+                startCountdown(info.CountdownSeconds, info.Next.Id);
+            }
         }
     }
 

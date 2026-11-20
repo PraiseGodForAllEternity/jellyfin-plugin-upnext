@@ -86,7 +86,7 @@ public sealed class RemoteAutoplayService : IHostedService, IDisposable
             }
 
             // The web overlay already took care of this one.
-            if (_claims.IsClaimed(e.Session.DeviceId, movie.Id))
+            if (_claims.IsClaimed(e.Session.UserId, e.Session.DeviceId, movie.Id))
             {
                 return;
             }

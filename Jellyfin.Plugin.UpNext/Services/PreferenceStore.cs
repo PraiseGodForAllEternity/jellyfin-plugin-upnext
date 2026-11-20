@@ -46,10 +46,14 @@ public class PreferenceStore
         UserPreference? pref;
         lock (_lock)
         {
-            pref = config.UserPreferences.FirstOrDefault(p => p.UserId.Equals(userId));
+            pref = config.UserPreferences?.FirstOrDefault(p => p is not null && p.UserId.Equals(userId));
         }
 
         var mode = pref?.Mode ?? config.DefaultMode;
+        if (!Enum.IsDefined(mode))
+        {
+            mode = UpNextMode.Autoplay;
+        }
         var countdown = ClampCountdown(pref?.CountdownSeconds ?? config.DefaultCountdownSeconds);
         return new EffectivePreferences(mode, countdown, pref?.Mode is null, pref?.CountdownSeconds is null);
     }
@@ -70,8 +74,8 @@ public class PreferenceStore
 
         lock (_lock)
         {
-            var list = plugin.Configuration.UserPreferences;
-            list.RemoveAll(p => p.UserId.Equals(userId));
+            var list = plugin.Configuration.UserPreferences ??= new();
+            list.RemoveAll(p => p is null || p.UserId.Equals(userId));
             if (mode is not null || countdownSeconds is not null)
             {
                 list.Add(new UserPreference

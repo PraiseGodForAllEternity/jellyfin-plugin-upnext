@@ -50,6 +50,8 @@ public sealed class IndexHtmlMiddleware
         headers.Remove("Accept-Encoding");
         headers.Remove("If-None-Match");
         headers.Remove("If-Modified-Since");
+        headers.Remove("Range");
+        headers.Remove("If-Range");
 
         var originalBody = context.Response.Body;
         using var buffer = new MemoryStream();

@@ -98,6 +98,12 @@
                 var numbers = ['DefaultCountdownSeconds', 'FallbackSecondsBeforeEnd', 'SuggestionCount', 'RemoteAutoplayDelaySeconds'];
                 var checks = ['SkipWatchedInCollections', 'EnableWebOverlay', 'EnableRemoteAutoplay'];
                 var modeNames = { Autoplay: 'Autoplay', SuggestionsOnly: 'Up Next, no autoplay', Off: 'Off' };
+                var modeOrder = ['Autoplay', 'SuggestionsOnly', 'Off'];
+
+                // Enums may come back as names or numbers depending on the serializer.
+                function modeKey(value) {
+                    return typeof value === 'number' ? modeOrder[value] : value;
+                }
 
                 function describeUsers(config) {
                     var list = page.querySelector('#UpNextUserList');
@@ -116,10 +122,10 @@
                             var key = String(p.UserId).replace(/-/g, '').toLowerCase();
                             var parts = [];
                             if (p.Mode != null) {
-                                parts.push(modeNames[p.Mode] || p.Mode);
+                                parts.push(modeNames[modeKey(p.Mode)] || 'Custom');
                             }
                             if (p.CountdownSeconds != null) {
-                                parts.push(p.CountdownSeconds + 's countdown');
+                                parts.push((parseInt(p.CountdownSeconds, 10) || 0) + 's countdown');
                             }
                             var row = document.createElement('div');
                             row.textContent = (names[key] || 'Unknown user') + ': ' + parts.join(', ');
@@ -131,7 +137,7 @@
                 page.addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                        page.querySelector('#DefaultMode').value = config.DefaultMode;
+                        page.querySelector('#DefaultMode').value = modeKey(config.DefaultMode) || 'Autoplay';
                         numbers.forEach(function (n) {
                             page.querySelector('#' + n).value = config[n];
                         });
