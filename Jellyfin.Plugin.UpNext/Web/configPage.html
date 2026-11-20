@@ -40,7 +40,7 @@
                     <div class="inputContainer">
                         <label class="inputLabel inputLabelUnfocused" for="StillWatchingAfter">Ask "Are you still watching?" after this many movies or shows autoplay in a row</label>
                         <input id="StillWatchingAfter" name="StillWatchingAfter" type="number" is="emby-input" min="0" max="20" />
-                        <div class="fieldDescription">Counts only movies that started by themselves, with nobody pressing anything. 0 never asks. Apps that can't show the question (Roku, Android TV, etc.) simply stop.</div>
+                        <div class="fieldDescription">Counts only movies that started by themselves, with nobody pressing anything. 0 never asks. Apps that can't show the question (Android TV, Fire TV, etc.) simply stop.</div>
                     </div>
 
                     <div class="inputContainer">
@@ -70,7 +70,7 @@
                             <input id="EnableRemoteAutoplay" name="EnableRemoteAutoplay" type="checkbox" is="emby-checkbox" />
                             <span>Autoplay the next movie on other apps</span>
                         </label>
-                        <div class="fieldDescription checkboxFieldDescription">Roku, Android TV, Fire TV and other apps that can't show the Up Next screen. The server starts the next movie after the delay below, when the app accepts remote commands.</div>
+                        <div class="fieldDescription checkboxFieldDescription">Android TV, Fire TV and other apps that can't show the Up Next screen. The server starts the next movie after the delay below, when the app accepts remote commands. (The Roku app doesn't, so Roku isn't supported.)</div>
                     </div>
 
                     <div class="inputContainer">

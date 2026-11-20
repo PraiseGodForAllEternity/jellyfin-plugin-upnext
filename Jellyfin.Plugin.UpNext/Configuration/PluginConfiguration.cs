@@ -44,7 +44,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>
     /// Gets or sets a value indicating whether the server starts the next movie on
-    /// apps that can't show the overlay (Roku, Android TV, etc.).
+    /// apps that can't show the overlay (Android TV, Fire TV, etc.; not Roku, whose app ignores remote commands).
     /// </summary>
     public bool EnableRemoteAutoplay { get; set; } = true;
 

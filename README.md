@@ -75,9 +75,10 @@ If the movie isn't part of a series, or it's the last one, Up Next picks a simil
 | Jellyfin Android and iOS apps | Full Up Next screen. If the Android app is set to use its native player, you get autoplay only. |
 | LG webOS TVs | Full Up Next screen (the app loads the web player from your server) |
 | Samsung Tizen TVs | Depends on how the app was installed. If it bundles its own copy of the web player, autoplay only. |
-| Roku, Android TV, Fire TV, Google TV, Swiftfin, others | Autoplay only: when a movie ends, the server starts the next one after a short delay. This only works if the app accepts remote "play" commands. |
+| **Roku** | **Not supported.** The Jellyfin Roku app doesn't accept remote commands from the server, so nothing can start the next movie on it. Workaround: turn on *Automatically add to collection* for your movie library, then play a collection from its first film; the Roku app plays the films in order on its own. |
+| Android TV, Fire TV, Google TV, Swiftfin, others | Autoplay only: when a movie ends, the server starts the next one after a short delay. This only works if the app accepts remote "play" commands. |
 
-The Up Next screen runs inside Jellyfin's web player, so apps with their own native player can't show it. For those, the server starts the next movie itself.
+The Up Next screen runs inside Jellyfin's web player, so apps with their own native player can't show it. For those, the server starts the next movie itself, when the app lets it. Roku support depends on the Roku app adding remote control ([jellyfin-roku#1138](https://github.com/jellyfin/jellyfin-roku/issues/1138)); if it does, autoplay will start working there without any change to Up Next.
 
 ## Settings
 
