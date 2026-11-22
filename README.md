@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/PraiseGodForAllEternity/jellyfin-plugin-upnext?label=release"></a>
-  <img alt="Jellyfin 10.11" src="https://img.shields.io/badge/Jellyfin-10.11-7b5cd6">
+  <img alt="Jellyfin 10.11 and 12" src="https://img.shields.io/badge/Jellyfin-10.11%20%7C%2012-7b5cd6">
   <a href="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/actions/workflows/build.yml"><img alt="Build" src="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/actions/workflows/build.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/github/license/PraiseGodForAllEternity/jellyfin-plugin-upnext"></a>
 </p>
@@ -52,7 +52,7 @@ If the movie isn't part of a series, or it's the last one, Up Next picks a simil
 
 ## Requirements
 
-- Jellyfin **10.11**
+- Jellyfin **10.11** or **12**. The catalog gives each server the right build automatically: version numbers ending in **.12** (like 1.5.0.12) are the Jellyfin 12 builds.
 - [Intro Skipper](https://github.com/intro-skipper/intro-skipper), recommended, so Up Next knows exactly when the credits start. Make sure its credits detection is on and has finished analyzing your library: if Jellyfin shows a "Skip credits" button, it's working. Without it, Up Next uses a chapter named like "End Credits" if the file has one, and otherwise shows the card a set time before the end (3 minutes by default), which can be late for movies with long credits.
 
 ## Install
@@ -113,6 +113,7 @@ Up Next is new. Here's what has actually been tested, and what hasn't yet. If yo
 **Tested**
 
 - Jellyfin 10.11.11 on Windows (test server) and 10.11 on Ubuntu (real library)
+- Jellyfin 12.4 on Windows (test server): installing from the catalog, the Up Next card, collections, countdown autoplay, Play Now, the settings page and Check a movie
 - The web player in a Chromium-based browser: the shrink-to-corner card, countdown, Play Now, Back to Browse, More Like This, Watch Credits, the end screen, and keyboard navigation
 - Next film from a Jellyfin collection, and from the TMDb series in a movie's metadata with no collection
 - Similar-movie picks, and series-aware suggestions (a series is suggested from its first unwatched part)
@@ -135,7 +136,8 @@ Up Next is new. Here's what has actually been tested, and what hasn't yet. If yo
 - The **File Transformation** plugin integration
 - **Large libraries**, multiple people watching at once, and users with **parental controls** or limited library access (handled in the code, not tested with real accounts)
 - Shows with **multiple seasons, specials or missing episodes** (tested with one-season shows)
-- Jellyfin versions other than 10.11 (12.x is not supported)
+- On **Jellyfin 12**: a real library, upgrading a server from 10.11 to 12 with Up Next installed, the TV-show cards (only checked through the API), and server autoplay for other apps
+- Jellyfin versions older than 10.11
 
 **Known not to work**
 
@@ -143,20 +145,22 @@ Up Next is new. Here's what has actually been tested, and what hasn't yet. If yo
 
 ## Building
 
-Requires the .NET 9 SDK or newer.
+Requires the .NET 10 SDK (it builds both the .NET 9 and .NET 10 versions).
 
 ```powershell
-./build.ps1 -Version 1.0.0.0 -Changelog "First release"
+./build.ps1 -Version 1.5.0.0 -Changelog "What changed"
 ```
 
-This builds `dist/up-next_1.0.0.0.zip` and adds the version to `manifest.json`. To release it:
+This builds `dist/up-next_1.5.0.0.zip` for Jellyfin 10.11 and `dist/up-next_1.5.0.12.zip` for Jellyfin 12, and adds both to `manifest.json`. To release them:
 
 ```powershell
-gh release create v1.0.0.0 dist/up-next_1.0.0.0.zip --title "Up Next 1.0.0.0" --notes "First release"
+gh release create v1.5.0.0 dist/up-next_1.5.0.0.zip dist/up-next_1.5.0.12.zip --title "Up Next 1.5.0.0" --notes "What changed"
 git add manifest.json
-git commit -m "Release 1.0.0.0"
+git commit -m "Release 1.5.0.0"
 git push
 ```
+
+To build just one version while working on it: `dotnet build -p:JellyfinTarget=12` (or `10.11`, the default).
 
 ## License
 

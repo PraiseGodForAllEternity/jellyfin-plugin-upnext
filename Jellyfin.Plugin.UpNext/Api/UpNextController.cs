@@ -179,7 +179,7 @@ public class UpNextController : ControllerBase
         }
 
         var item = _libraryManager.GetItemById(itemId);
-        if (item is null || !item.IsVisible(user))
+        if (item is null || !item.IsVisibleStandalone(user))
         {
             return NotFound();
         }
@@ -267,7 +267,7 @@ public class UpNextController : ControllerBase
 
         // Movies and episodes only: this endpoint exists for Up Next, not as a general remote control.
         var item = _libraryManager.GetItemById(itemId);
-        if (item is not (Movie or Episode) || !item.IsVisible(user))
+        if (item is not (Movie or Episode) || !item.IsVisibleStandalone(user))
         {
             return NotFound();
         }
@@ -439,7 +439,7 @@ public class UpNextController : ControllerBase
         }
 
         var item = _libraryManager.GetItemById(itemId);
-        if (item is not (Movie or Episode) || !item.IsVisible(user))
+        if (item is not (Movie or Episode) || !item.IsVisibleStandalone(user))
         {
             return NotFound();
         }

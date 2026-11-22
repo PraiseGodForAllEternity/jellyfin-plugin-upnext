@@ -1,0 +1,6 @@
+<Project>
+  <!-- The Jellyfin 12 build restores different packages, so it needs its own obj folder. -->
+  <PropertyGroup Condition="'$(JellyfinTarget)' == '12'">
+    <BaseIntermediateOutputPath>obj\jf12\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

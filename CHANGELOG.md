@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0.0 (Jellyfin 10.11) and 1.5.0.12 (Jellyfin 12)
+
+- New: Jellyfin 12 support. Each release now has two builds: 1.5.0.0 for Jellyfin 10.11 and 1.5.0.12 for Jellyfin 12. The plugin catalog installs the right one automatically, and a server upgraded from 10.11 to 12 is offered the 12 build as an update.
+- Security fix: Up Next now respects which libraries each user may open. Before, a user limited to some libraries could be shown, or sent through Up Next's play button, a movie from a library they can't access (for example through a collection that mixes libraries). Parental ratings and tags were already respected.
+
 ## 1.4.1.0
 
 - Settings page no longer says Roku gets autoplay. The Jellyfin Roku app doesn't accept remote commands, so Roku isn't supported.

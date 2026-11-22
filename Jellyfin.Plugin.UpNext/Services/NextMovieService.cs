@@ -350,12 +350,6 @@ public class NextMovieService
     }
 
     /// <summary>
-    /// The film series a movie belongs to, each as (name, films in release order).
-    /// First any Jellyfin collections it's in (made by hand, or automatically when the
-    /// library's "Automatically add to collection" option is on), then the TMDb series
-    /// recorded in its metadata, which works even when no collection exists.
-    /// </summary>
-    /// <summary>
     /// For the admin page's "Check a movie" tool: every film series Up Next finds for a
     /// movie, in the order it consults them, with the films in play order.
     /// </summary>
@@ -369,6 +363,10 @@ public class NextMovieService
         return (groups, full.GetProviderId(MetadataProvider.TmdbCollection));
     }
 
+    // The film series a movie belongs to, each as (source, name, films in release order).
+    // First any Jellyfin collections it's in (made by hand, or automatically when the
+    // library's "Automatically add to collection" option is on), then the TMDb series
+    // recorded in its metadata, which works even when no collection exists.
     private IEnumerable<(string Source, string? Name, List<BaseItem> Films)> FilmSeries(
         User user,
         BaseItem movie,
@@ -434,7 +432,7 @@ public class NextMovieService
         // is known and different.
         return matches
             .OfType<Movie>()
-            .Where(m => m.IsVisible(user)
+            .Where(m => m.IsVisibleStandalone(user)
                 && (m.GetProviderId(MetadataProvider.TmdbCollection) is not { Length: > 0 } id
                     || string.Equals(id, tmdbCollectionId, StringComparison.Ordinal)))
             .GroupBy(m => m.Id)
@@ -483,6 +481,9 @@ public class NextMovieService
             return true;
         }
 
+        // Jellyfin 12 marks these two as old (it links by item id now), but
+        // collections made by older versions can still use them.
+#pragma warning disable CS0618
         if (!string.IsNullOrEmpty(child.LibraryItemId)
             && Guid.TryParse(child.LibraryItemId, out var libraryId)
             && libraryId.Equals(item.Id))
@@ -493,13 +494,14 @@ public class NextMovieService
         return !string.IsNullOrEmpty(child.Path)
             && !string.IsNullOrEmpty(item.Path)
             && string.Equals(child.Path, item.Path, StringComparison.OrdinalIgnoreCase);
+#pragma warning restore CS0618
     }
 
     private static List<BaseItem> OrderedFilms(User user, BoxSet boxSet)
     {
         return boxSet.GetLinkedChildren()
             .OfType<Movie>()
-            .Where(m => m.IsVisible(user))
+            .Where(m => m.IsVisibleStandalone(user))
             .GroupBy(m => m.Id)
             .Select(g => (BaseItem)g.First())
             .OrderBy(ReleaseDate)

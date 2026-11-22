@@ -8,10 +8,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        jellyfin: ["10.11", "12"]
+    name: Jellyfin ${{ matrix.jellyfin }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: |
+            9.0.x
+            10.0.x
       - name: Build
-        run: dotnet build Jellyfin.Plugin.UpNext/Jellyfin.Plugin.UpNext.csproj -c Release
+        run: dotnet build Jellyfin.Plugin.UpNext/Jellyfin.Plugin.UpNext.csproj -c Release -p:JellyfinTarget=${{ matrix.jellyfin }}
