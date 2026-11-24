@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1.0 (Jellyfin 10.11) and 1.5.1.12 (Jellyfin 12)
+
+- Build cleanup. Nothing changes in how Up Next works.
+
 ## 1.5.0.0 (Jellyfin 10.11) and 1.5.0.12 (Jellyfin 12)
 
 - New: Jellyfin 12 support. Each release now has two builds: 1.5.0.0 for Jellyfin 10.11 and 1.5.0.12 for Jellyfin 12. The plugin catalog installs the right one automatically, and a server upgraded from 10.11 to 12 is offered the 12 build as an update.

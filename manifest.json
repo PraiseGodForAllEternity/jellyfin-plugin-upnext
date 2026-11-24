@@ -8,6 +8,22 @@
         "category":  "General",
         "versions":  [
                          {
+                             "version":  "1.5.1.12",
+                             "changelog":  "Build cleanup. Nothing changes in how Up Next works.",
+                             "targetAbi":  "12.0.0.0",
+                             "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.5.1.0/up-next_1.5.1.12.zip",
+                             "checksum":  "2510c83e5a97ad97839beb5331130125",
+                             "timestamp":  "2026-11-24T04:37:24Z"
+                         },
+                         {
+                             "version":  "1.5.1.0",
+                             "changelog":  "Build cleanup. Nothing changes in how Up Next works.",
+                             "targetAbi":  "10.11.0.0",
+                             "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.5.1.0/up-next_1.5.1.0.zip",
+                             "checksum":  "cd29801fb2fcd3fe315b7c8bc38218e9",
+                             "timestamp":  "2026-11-24T04:37:24Z"
+                         },
+                         {
                              "version":  "1.5.0.12",
                              "changelog":  "Jellyfin 12 support (1.5.0.12 is the Jellyfin 12 build; the catalog picks the right one). Security fix: Up Next now respects which libraries each user may open.",
                              "targetAbi":  "12.0.0.0",
