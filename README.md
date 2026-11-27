@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/PraiseGodForAllEternity/jellyfin-plugin-upnext?label=release"></a>
-$B
+  <a href="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/PraiseGodForAllEternity/jellyfin-plugin-upnext/total"></a>
   <img alt="Jellyfin 10.11 and 12" src="https://img.shields.io/badge/Jellyfin-10.11%20%7C%2012-7b5cd6">
   <a href="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/actions/workflows/build.yml"><img alt="Build" src="https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/actions/workflows/build.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/github/license/PraiseGodForAllEternity/jellyfin-plugin-upnext"></a>
