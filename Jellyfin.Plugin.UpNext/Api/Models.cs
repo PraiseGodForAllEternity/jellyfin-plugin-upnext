@@ -52,6 +52,9 @@ public class MovieCard
     /// <summary>Gets or sets an extra line, e.g. "Season 1, Episode 1: Pilot".</summary>
     public string? Subtitle { get; set; }
 
+    /// <summary>Gets or sets the viewer's subtitle language when the title has it, e.g. "English".</summary>
+    public string? SubtitlesReady { get; set; }
+
     /// <summary>
     /// Builds a card from a suggestion.
     /// </summary>

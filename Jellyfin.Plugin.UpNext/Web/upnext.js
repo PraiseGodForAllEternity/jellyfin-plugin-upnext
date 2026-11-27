@@ -368,6 +368,9 @@
         if (next.Kind === 'Series') {
             meta.push('TV Series');
         }
+        if (next.SubtitlesReady) {
+            meta.push('<span class="upnext-cc">CC</span>' + escapeHtml(next.SubtitlesReady) + ' subtitles ready');
+        }
 
         var label = cardLabel(info);
 
@@ -941,6 +944,7 @@
             '.upnext-meta{color:#ddd;font-size:1em;margin-bottom:.7em;display:flex;align-items:center;flex-wrap:wrap}',
             '.upnext-dot{margin:0 .5em;color:#888}',
             '.upnext-rating{border:1px solid #aaa;padding:0 .35em;border-radius:3px;font-size:.85em}',
+            '.upnext-cc{border:1px solid #aaa;padding:0 .3em;border-radius:3px;font-size:.75em;font-weight:700;margin-right:.4em}',
             '.upnext-overview{color:#e6e6e6;font-size:1.02em;line-height:1.45;margin:0 0 1.2em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
             '.upnext-buttons{display:flex;gap:.8em;flex-wrap:wrap}',
             '.upnext-btn{position:relative;overflow:hidden;border:2px solid transparent;border-radius:6px;padding:.75em 1.6em;font-size:1.05em;font-weight:600;cursor:pointer;outline:none;transition:transform .15s}',

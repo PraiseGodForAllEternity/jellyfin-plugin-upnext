@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0.0 (Jellyfin 10.11) and 1.6.0.12 (Jellyfin 12)
+
+- New: the Up Next card shows **CC English subtitles ready** (in your own subtitle language) when the next title has full subtitles in it. Forced-only subtitles don't count, and nothing shows when your subtitles are off.
+
 ## 1.5.1.0 (Jellyfin 10.11) and 1.5.1.12 (Jellyfin 12)
 
 - Build cleanup. Nothing changes in how Up Next works.

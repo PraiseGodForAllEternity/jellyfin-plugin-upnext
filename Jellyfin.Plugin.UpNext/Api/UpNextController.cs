@@ -17,6 +17,8 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaSegments;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Controller.Session;
+using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.Globalization;
 using MediaBrowser.Model.Session;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -41,6 +43,8 @@ public class UpNextController : ControllerBase
     private readonly NextMovieService _nextMovies;
     private readonly PreferenceStore _preferences;
     private readonly ClaimTracker _claims;
+    private readonly IMediaSourceManager _mediaSources;
+    private readonly ILocalizationManager _localization;
     private readonly ILogger<UpNextController> _logger;
 
     /// <summary>
@@ -55,6 +59,8 @@ public class UpNextController : ControllerBase
     /// <param name="nextMovies">Next movie picker.</param>
     /// <param name="preferences">Preference store.</param>
     /// <param name="claims">Overlay claim tracker.</param>
+    /// <param name="mediaSources">Media source manager.</param>
+    /// <param name="localization">Localization manager.</param>
     /// <param name="logger">Logger.</param>
     public UpNextController(
         ISessionManager sessionManager,
@@ -66,6 +72,8 @@ public class UpNextController : ControllerBase
         NextMovieService nextMovies,
         PreferenceStore preferences,
         ClaimTracker claims,
+        IMediaSourceManager mediaSources,
+        ILocalizationManager localization,
         ILogger<UpNextController> logger)
     {
         _sessionManager = sessionManager;
@@ -77,6 +85,8 @@ public class UpNextController : ControllerBase
         _nextMovies = nextMovies;
         _preferences = preferences;
         _claims = claims;
+        _mediaSources = mediaSources;
+        _localization = localization;
         _logger = logger;
     }
 
@@ -217,6 +227,7 @@ public class UpNextController : ControllerBase
 
         response.CreditsStartTicks = await GetCreditsStart(item).ConfigureAwait(false);
         response.Next = MovieCard.From(pick.Next);
+        response.Next.SubtitlesReady = SubtitlesReady(user, pick.Next.Play);
         response.Context = pick.Context.ToString();
         response.SourceName = pick.SourceName;
         response.CollectionName = pick.Context == PickContext.Collection ? pick.SourceName : null;
@@ -488,6 +499,38 @@ public class UpNextController : ControllerBase
         response.Next = pick?.Next.Display.Name;
         response.NextReason = pick?.Context.ToString();
         return response;
+    }
+
+    // The viewer's own subtitle language, if the title has full (not forced-only) subtitles in it.
+    private string? SubtitlesReady(User user, BaseItem item)
+    {
+        var language = user.SubtitleLanguagePreference?.Split(',')[0].Trim();
+        if (string.IsNullOrEmpty(language) || user.SubtitleMode == SubtitlePlaybackMode.None)
+        {
+            return null;
+        }
+
+        try
+        {
+            var wanted = _localization.FindLanguageInfo(language);
+            if (wanted is null)
+            {
+                return null;
+            }
+
+            var has = _mediaSources.GetMediaStreams(item.Id).Any(s =>
+                s.Type == MediaStreamType.Subtitle
+                && !s.IsForced
+                && !string.IsNullOrEmpty(s.Language)
+                && _localization.FindLanguageInfo(s.Language) is { } found
+                && found.ThreeLetterISOLanguageNames.Intersect(wanted.ThreeLetterISOLanguageNames, StringComparer.OrdinalIgnoreCase).Any());
+            return has ? wanted.DisplayName : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Up Next: couldn't check subtitles for {Name}", item.Name);
+            return null;
+        }
     }
 
     private async Task<long?> GetCreditsStart(BaseItem item)
