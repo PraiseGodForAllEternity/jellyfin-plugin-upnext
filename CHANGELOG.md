@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.0.0 (Jellyfin 10.11) and 1.7.0.12 (Jellyfin 12)
+
+- New: when the ending movie has a scene during or after its credits (from its TMDb keywords), the card says so. Autoplay still runs.
+- Fixed: "subtitles ready" no longer shows for people whose subtitle mode is "Only forced".
+
 ## 1.6.0.0 (Jellyfin 10.11) and 1.6.0.12 (Jellyfin 12)
 
 - New: the Up Next card shows **CC English subtitles ready** (in your own subtitle language) when the next title has full subtitles in it. Forced-only subtitles don't count, and nothing shows when your subtitles are off.

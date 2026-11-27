@@ -146,6 +146,9 @@ public class UpNextResponse
 
     /// <summary>Gets or sets the alternatives.</summary>
     public List<MovieCard> Suggestions { get; set; } = new();
+
+    /// <summary>Gets or sets a value indicating whether the ending title has a scene during or after its credits.</summary>
+    public bool CreditsScene { get; set; }
 }
 
 /// <summary>

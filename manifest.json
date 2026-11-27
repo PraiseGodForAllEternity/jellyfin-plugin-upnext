@@ -8,6 +8,22 @@
         "category":  "General",
         "versions":  [
                          {
+                             "version":  "1.7.0.12",
+                             "changelog":  "New: the card says when a movie has a scene during or after its credits.",
+                             "targetAbi":  "12.0.0.0",
+                             "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.7.0.0/up-next_1.7.0.12.zip",
+                             "checksum":  "98caa70bac6398819267ecdb9bc3e826",
+                             "timestamp":  "2026-11-27T13:25:06Z"
+                         },
+                         {
+                             "version":  "1.7.0.0",
+                             "changelog":  "New: the card says when a movie has a scene during or after its credits.",
+                             "targetAbi":  "10.11.0.0",
+                             "sourceUrl":  "https://github.com/PraiseGodForAllEternity/jellyfin-plugin-upnext/releases/download/v1.7.0.0/up-next_1.7.0.0.zip",
+                             "checksum":  "8648603e6e504b5498020c0a0300c542",
+                             "timestamp":  "2026-11-27T13:25:06Z"
+                         },
+                         {
                              "version":  "1.6.0.12",
                              "changelog":  "New: the Up Next card shows when the next title has subtitles in your language.",
                              "targetAbi":  "12.0.0.0",

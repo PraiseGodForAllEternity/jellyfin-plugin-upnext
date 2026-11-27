@@ -21,6 +21,7 @@ Netflix-style "Up Next" for movies, and for when a TV show runs out of episodes.
 - **On the card:** Play Now, Back to Browse, and a few other suggestions. Click the small video to go back to fullscreen and watch the credits.
 - **Per user:** everyone can turn autoplay on or off and pick their countdown length.
 - **"Are you still watching?"** After 3 movies autoplay in a row with nobody touching anything, Up Next asks before starting another, so a marathon doesn't run all night after everyone falls asleep.
+- **Post-credits scenes:** the card tells you when the movie has a scene during or after its credits, so you can stay for it.
 - **Subtitles at a glance:** the card shows when the next title has subtitles in your language. Pairs with [Full Auto Subtitles](https://github.com/PraiseGodForAllEternity/jellyfin-plugin-full-auto-subtitles), which gets them ready ahead of time.
 - **Series-aware suggestions:** if a suggestion is part of a series, you get the first part you haven't seen, never the middle of a trilogy.
 

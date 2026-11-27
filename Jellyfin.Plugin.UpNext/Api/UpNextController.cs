@@ -226,6 +226,7 @@ public class UpNextController : ControllerBase
         }
 
         response.CreditsStartTicks = await GetCreditsStart(item).ConfigureAwait(false);
+        response.CreditsScene = HasCreditsScene(item);
         response.Next = MovieCard.From(pick.Next);
         response.Next.SubtitlesReady = SubtitlesReady(user, pick.Next.Play);
         response.Context = pick.Context.ToString();
@@ -505,7 +506,7 @@ public class UpNextController : ControllerBase
     private string? SubtitlesReady(User user, BaseItem item)
     {
         var language = user.SubtitleLanguagePreference?.Split(',')[0].Trim();
-        if (string.IsNullOrEmpty(language) || user.SubtitleMode == SubtitlePlaybackMode.None)
+        if (string.IsNullOrEmpty(language) || user.SubtitleMode is SubtitlePlaybackMode.None or SubtitlePlaybackMode.OnlyForced)
         {
             return null;
         }
@@ -532,6 +533,12 @@ public class UpNextController : ControllerBase
             return null;
         }
     }
+
+    // TMDb keywords, which Jellyfin saves as tags unless its TMDb "exclude tags" option is on.
+    private static readonly string[] CreditsSceneTags = { "aftercreditsstinger", "duringcreditsstinger" };
+
+    private static bool HasCreditsScene(BaseItem item)
+        => (item.Tags ?? Array.Empty<string>()).Any(tag => CreditsSceneTags.Any(known => string.Equals(tag?.Replace(" ", string.Empty, StringComparison.Ordinal), known, StringComparison.OrdinalIgnoreCase)));
 
     private async Task<long?> GetCreditsStart(BaseItem item)
     {

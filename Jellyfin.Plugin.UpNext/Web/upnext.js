@@ -405,6 +405,10 @@
         if (next.Overview) {
             html += '<p class="upnext-overview">' + escapeHtml(next.Overview) + '</p>';
         }
+        if (info.CreditsScene && !ended) {
+            html += '<div class="upnext-scene"><span class="material-icons movie" aria-hidden="true"></span>' +
+                'There\'s a scene after the credits. Select the small video to watch it.</div>';
+        }
         html += '<div class="upnext-buttons">';
         html += '<button type="button" class="upnext-btn upnext-play upnext-focusable" data-action="play" data-id="' + escapeHtml(playIdOf(next)) + '">' +
             '<span class="upnext-fill"></span>' +
@@ -947,6 +951,8 @@
             '.upnext-cc{border:1px solid #aaa;padding:0 .3em;border-radius:3px;font-size:.75em;font-weight:700;margin-right:.4em}',
             '.upnext-overview{color:#e6e6e6;font-size:1.02em;line-height:1.45;margin:0 0 1.2em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
             '.upnext-buttons{display:flex;gap:.8em;flex-wrap:wrap}',
+            '.upnext-scene{display:flex;align-items:center;gap:.4em;color:#ffd54f;font-weight:600;margin:0 0 1em;font-size:.98em}',
+            '.upnext-scene .material-icons{font-size:1.25em}',
             '.upnext-btn{position:relative;overflow:hidden;border:2px solid transparent;border-radius:6px;padding:.75em 1.6em;font-size:1.05em;font-weight:600;cursor:pointer;outline:none;transition:transform .15s}',
             '.upnext-btn-text{position:relative;display:flex;align-items:center;gap:.35em;white-space:nowrap}',
             '.upnext-play{background:#fff;color:#000}',
